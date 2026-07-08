@@ -126,7 +126,7 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
 const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
-    paddingBottom: 120,
+    paddingBottom: spacing.lg,
   },
   emptyContent: {
     flexGrow: 1,

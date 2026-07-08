@@ -6,6 +6,7 @@ import type { MainTabParamList } from './types';
 import { AllActivitiesScreen } from '../screens/AllActivitiesScreen';
 import { CompletedScreen } from '../screens/CompletedScreen';
 import { HomeScreen } from '../screens/HomeScreen';
+import { MainTabBar } from './MainTabBar';
 
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
 
@@ -18,7 +19,8 @@ export function MainTabs() {
         lazy: true,
         swipeEnabled: true,
       }}
-      tabBar={() => null}
+      tabBarPosition="bottom"
+      tabBar={props => <MainTabBar {...props} />}
     >
       <Tab.Screen name="Completed" component={CompletedScreen} />
       <Tab.Screen name="Home" component={HomeScreen} />

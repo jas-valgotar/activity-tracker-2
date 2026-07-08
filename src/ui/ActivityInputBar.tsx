@@ -97,13 +97,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderTopWidth: 1,
-    bottom: 0,
     flexDirection: 'row',
     gap: spacing.sm,
-    left: 0,
     padding: spacing.lg,
-    position: 'absolute',
-    right: 0,
   },
   disabledButton: {
     opacity: 0.45,
