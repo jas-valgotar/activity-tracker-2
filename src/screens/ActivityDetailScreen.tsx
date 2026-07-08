@@ -128,7 +128,7 @@ export function ActivityDetailScreen() {
             {activity.status.toUpperCase()} • {formatDuration(elapsedMs)}
           </Text>
         </View>
-        <TimerRing elapsedMs={elapsedMs} frozen={isCompleted} />
+        <TimerRing elapsedMs={elapsedMs} blinkNextSpike={activity.status === 'active'} frozen={isCompleted} />
       </View>
       <View style={styles.actions}>
         {!isCompleted ? (

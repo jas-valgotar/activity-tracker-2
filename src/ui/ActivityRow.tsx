@@ -87,7 +87,7 @@ export function ActivityRow({
             {activity.status.toUpperCase()} • {formatDuration(elapsedMs)}
           </Text>
         </View>
-        <TimerRing elapsedMs={elapsedMs} frozen={isFrozen} />
+        <TimerRing elapsedMs={elapsedMs} blinkNextSpike={activity.status === 'active'} frozen={isFrozen} />
       </Pressable>
     </Swipeable>
   );

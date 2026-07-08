@@ -1,6 +1,6 @@
 // Overview: Renders the 15-minute spike timer ring and elapsed-hour center label.
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
 import { formatElapsedHours, getHighlightedSpikeCount } from '../domain/time';
@@ -9,6 +9,7 @@ import { colors } from './theme';
 type TimerRingProps = {
   elapsedMs: number;
   frozen?: boolean;
+  blinkNextSpike?: boolean;
 };
 
 const SIZE = 74;
@@ -18,16 +19,39 @@ const INNER_RADIUS = 25;
 const SPIKES = 15;
 
 // Draws one timer ring with highlighted minute spikes.
-export function TimerRing({ elapsedMs, frozen = false }: TimerRingProps) {
+export function TimerRing({ elapsedMs, frozen = false, blinkNextSpike = false }: TimerRingProps) {
   const highlightedSpikes = getHighlightedSpikeCount(elapsedMs);
+  const nextSpikeIndex = blinkNextSpike && !frozen ? highlightedSpikes : null;
+  const [isBlinkVisible, setIsBlinkVisible] = useState(true);
+
+  useEffect(() => {
+    if (nextSpikeIndex === null) {
+      setIsBlinkVisible(true);
+      return;
+    }
+
+    setIsBlinkVisible(true);
+    const timer = setInterval(() => {
+      setIsBlinkVisible(currentValue => !currentValue);
+    }, 500);
+
+    return () => clearInterval(timer);
+  }, [nextSpikeIndex]);
 
   return (
     <View style={styles.container} accessibilityLabel={`${formatElapsedHours(elapsedMs)} hours elapsed`}>
       <Svg width={SIZE} height={SIZE}>
         {Array.from({ length: SPIKES }).map((_, index) => {
           const angle = (index / SPIKES) * Math.PI * 2 - Math.PI / 2;
-          const isHighlighted = index < highlightedSpikes;
-          const stroke = isHighlighted ? (frozen ? colors.complete : colors.primary) : colors.border;
+          let stroke = colors.border;
+          let opacity = 1;
+
+          if (index < highlightedSpikes) {
+            stroke = frozen ? colors.complete : colors.primary;
+          } else if (index === nextSpikeIndex) {
+            stroke = colors.primary;
+            opacity = isBlinkVisible ? 1 : 0.25;
+          }
 
           return (
             <Line
@@ -36,6 +60,7 @@ export function TimerRing({ elapsedMs, frozen = false }: TimerRingProps) {
               y1={CENTER + Math.sin(angle) * INNER_RADIUS}
               x2={CENTER + Math.cos(angle) * OUTER_RADIUS}
               y2={CENTER + Math.sin(angle) * OUTER_RADIUS}
+              opacity={opacity}
               stroke={stroke}
               strokeLinecap="round"
               strokeWidth={4}
