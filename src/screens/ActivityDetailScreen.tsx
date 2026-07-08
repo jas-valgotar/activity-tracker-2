@@ -8,7 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CheckCircle2, Pause, Play, Trash2 } from 'lucide-react-native';
 import { useAppData } from '../data/AppDataProvider';
 import type { ActivityWithLogs } from '../domain/activityTypes';
-import { calculateActiveElapsedMs, formatDuration, formatEventTimestamp } from '../domain/time';
+import { calculateActiveElapsedMs, formatDurationWithSeconds, formatEventTimestamp } from '../domain/time';
 import type { RootStackParamList } from '../navigation/types';
 import { TimerRing } from '../ui/TimerRing';
 import { colors, spacing } from '../ui/theme';
@@ -48,9 +48,9 @@ export function ActivityDetailScreen() {
     });
   }, [loadActivity]);
 
-  // Refreshes elapsed-time display while the detail screen is visible.
+  // Refreshes elapsed-time display at second precision while the detail screen is visible.
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -125,7 +125,7 @@ export function ActivityDetailScreen() {
         <View style={styles.summaryCopy}>
           <Text style={styles.title}>{activity.title}</Text>
           <Text style={styles.status}>
-            {activity.status.toUpperCase()} • {formatDuration(elapsedMs)}
+            {activity.status.toUpperCase()} • {formatDurationWithSeconds(elapsedMs)}
           </Text>
         </View>
         <TimerRing elapsedMs={elapsedMs} blinkNextSpike={activity.status === 'active'} frozen={isCompleted} />

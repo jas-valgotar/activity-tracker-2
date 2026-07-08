@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
 import type { MainTabParamList } from './types';
 import { AllActivitiesScreen } from '../screens/AllActivitiesScreen';
 import { CompletedScreen } from '../screens/CompletedScreen';
@@ -9,6 +10,11 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { MainTabBar } from './MainTabBar';
 
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
+
+// Renders the custom tab bar without creating a new component type on each render.
+function renderMainTabBar(props: MaterialTopTabBarProps) {
+  return <MainTabBar {...props} />;
+}
 
 // Renders Completed, Home, and All in swipe order with Home as the initial route.
 export function MainTabs() {
@@ -20,7 +26,7 @@ export function MainTabs() {
         swipeEnabled: true,
       }}
       tabBarPosition="bottom"
-      tabBar={props => <MainTabBar {...props} />}
+      tabBar={renderMainTabBar}
     >
       <Tab.Screen name="Completed" component={CompletedScreen} />
       <Tab.Screen name="Home" component={HomeScreen} />

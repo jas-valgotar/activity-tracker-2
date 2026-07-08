@@ -1,6 +1,6 @@
 // Overview: Renders scrollable activity lists with shared empty, loading, and row behavior.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,6 +19,7 @@ type ActivityListProps = {
 export function ActivityList({ filter, emptyText }: ActivityListProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const {
+    activityRevision,
     listActivities,
     pauseActivity,
     resumeActivity,
@@ -29,6 +30,7 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const lastLoadedRevisionRef = useRef(activityRevision);
 
   // Reloads activities for the current filter and sort mode.
   const loadActivities = useCallback(async () => {
@@ -38,9 +40,9 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
     setIsRefreshing(false);
   }, [filter, listActivities]);
 
-  // Refreshes the visible timer values without changing database state.
+  // Refreshes the visible timer values every second without changing database state.
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -54,6 +56,20 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
       });
     }, [loadActivities]),
   );
+
+  // Reloads mounted lists when another part of the app mutates activity data.
+  useEffect(() => {
+    if (lastLoadedRevisionRef.current === activityRevision) {
+      return;
+    }
+
+    lastLoadedRevisionRef.current = activityRevision;
+    loadActivities().catch(error => {
+      console.error('Failed to reload activities after update', error);
+      setIsLoading(false);
+      setIsRefreshing(false);
+    });
+  }, [activityRevision, loadActivities]);
 
   // Handles pull-to-refresh.
   function handleRefresh() {

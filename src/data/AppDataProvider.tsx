@@ -18,6 +18,7 @@ type UndoState = {
 type AppDataContextValue = {
   isReady: boolean;
   sortMode: ActivitySortMode;
+  activityRevision: number;
   pendingUndo: UndoState | null;
   setSortMode(sortMode: ActivitySortMode): Promise<void>;
   listActivities(filter: ActivityFilter): Promise<ActivityWithLogs[]>;
@@ -42,6 +43,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [sortModeState, setSortModeState] = useState<ActivitySortMode>(DEFAULT_SORT_MODE);
+  const [activityRevision, setActivityRevision] = useState(0);
   const [pendingUndo, setPendingUndo] = useState<UndoState | null>(null);
 
   // Boots SQLite, runs migrations, creates repositories, and restores settings.
@@ -85,6 +87,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     return repositoriesRef.current;
   }, []);
 
+  // Signals focused lists to reload after activity mutations complete.
+  const bumpActivityRevision = useCallback(() => {
+    setActivityRevision(currentRevision => currentRevision + 1);
+  }, []);
+
   // Saves a new sort mode and updates all screens that depend on it.
   const setSortMode = useCallback(
     async (nextSortMode: ActivitySortMode) => {
@@ -118,8 +125,9 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (title: string) => {
       const { activities } = getRepositories();
       await activities.createActivity(title);
+      bumpActivityRevision();
     },
-    [getRepositories],
+    [bumpActivityRevision, getRepositories],
   );
 
   // Pauses an active activity.
@@ -127,8 +135,9 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (id: string) => {
       const { activities } = getRepositories();
       await activities.pauseActivity(id);
+      bumpActivityRevision();
     },
-    [getRepositories],
+    [bumpActivityRevision, getRepositories],
   );
 
   // Resumes a paused activity.
@@ -136,8 +145,9 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (id: string) => {
       const { activities } = getRepositories();
       await activities.resumeActivity(id);
+      bumpActivityRevision();
     },
-    [getRepositories],
+    [bumpActivityRevision, getRepositories],
   );
 
   // Completes an active or paused activity.
@@ -145,8 +155,9 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (id: string) => {
       const { activities } = getRepositories();
       await activities.completeActivity(id);
+      bumpActivityRevision();
     },
-    [getRepositories],
+    [bumpActivityRevision, getRepositories],
   );
 
   // Clears any pending delete undo state and timer.
@@ -169,12 +180,13 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         title: activity.title,
         expiresAt: Date.now() + 15_000,
       });
+      bumpActivityRevision();
       undoTimerRef.current = setTimeout(() => {
         setPendingUndo(null);
         undoTimerRef.current = null;
       }, 15_000);
     },
-    [clearUndo, getRepositories],
+    [bumpActivityRevision, clearUndo, getRepositories],
   );
 
   // Restores the currently pending soft-deleted activity.
@@ -186,12 +198,14 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     const { activities } = getRepositories();
     await activities.restoreActivity(pendingUndo.activityId);
     clearUndo();
-  }, [clearUndo, getRepositories, pendingUndo]);
+    bumpActivityRevision();
+  }, [bumpActivityRevision, clearUndo, getRepositories, pendingUndo]);
 
   const value = useMemo<AppDataContextValue>(
     () => ({
       isReady,
       sortMode: sortModeState,
+      activityRevision,
       pendingUndo,
       setSortMode,
       listActivities,
@@ -207,6 +221,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     [
       isReady,
       sortModeState,
+      activityRevision,
       pendingUndo,
       setSortMode,
       listActivities,
