@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Check, Minus, Plus } from 'lucide-react-native';
+import { Check, ChevronRight, Minus, Plus } from 'lucide-react-native';
 import {
   DEFAULT_TARGET_DURATION_MINUTES,
   formatTargetDuration,
@@ -68,37 +68,42 @@ export function DurationPicker({ value, onChange, label = 'Duration' }: Duration
           {value === null ? `Default ${formatTargetDuration(DEFAULT_TARGET_DURATION_MINUTES)}` : formatTargetDuration(value)}
         </Text>
       </View>
-      <ScrollView contentContainerStyle={styles.options} horizontal showsHorizontalScrollIndicator={false}>
-        {QUICK_DURATIONS.map(duration => {
-          const isSelected = duration === value;
-          return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
-              key={duration}
-              onPress={() => onChange(duration)}
-              style={[styles.option, isSelected ? styles.selectedOption : null]}
-            >
-              {isSelected ? <Check color={colors.surface} size={14} strokeWidth={3} /> : null}
-              <Text style={[styles.optionText, isSelected ? styles.selectedOptionText : null]}>
-                {formatTargetDuration(duration)}
-              </Text>
-            </Pressable>
-          );
-        })}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Choose custom duration"
-          accessibilityState={{ selected: isCustomSelected }}
-          onPress={openCustomPicker}
-          style={[styles.option, styles.customOption, isCustomSelected ? styles.selectedCustomOption : null]}
-        >
-          {isCustomSelected ? <Check color={colors.surface} size={14} strokeWidth={3} /> : null}
-          <Text style={[styles.customOptionText, isCustomSelected ? styles.selectedCustomOptionText : null]}>
-            {isCustomSelected ? formatTargetDuration(value) : 'Custom'}
-          </Text>
-        </Pressable>
-      </ScrollView>
+      <View style={styles.optionsViewport}>
+        <ScrollView contentContainerStyle={styles.options} horizontal showsHorizontalScrollIndicator={false}>
+          {QUICK_DURATIONS.map(duration => {
+            const isSelected = duration === value;
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                key={duration}
+                onPress={() => onChange(duration)}
+                style={[styles.option, isSelected ? styles.selectedOption : null]}
+              >
+                {isSelected ? <Check color={colors.surface} size={14} strokeWidth={3} /> : null}
+                <Text style={[styles.optionText, isSelected ? styles.selectedOptionText : null]}>
+                  {formatTargetDuration(duration)}
+                </Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Choose custom duration"
+            accessibilityState={{ selected: isCustomSelected }}
+            onPress={openCustomPicker}
+            style={[styles.option, styles.customOption, isCustomSelected ? styles.selectedCustomOption : null]}
+          >
+            {isCustomSelected ? <Check color={colors.surface} size={14} strokeWidth={3} /> : null}
+            <Text style={[styles.customOptionText, isCustomSelected ? styles.selectedCustomOptionText : null]}>
+              {isCustomSelected ? formatTargetDuration(value) : 'Custom'}
+            </Text>
+          </Pressable>
+        </ScrollView>
+        <View pointerEvents="none" style={styles.scrollCue}>
+          <ChevronRight color={colors.muted} size={16} strokeWidth={2.6} />
+        </View>
+      </View>
       <Modal animationType="slide" transparent visible={isCustomOpen} onRequestClose={() => setIsCustomOpen(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -182,6 +187,23 @@ const styles = StyleSheet.create({
   options: {
     gap: spacing.sm,
     paddingRight: spacing.sm,
+  },
+  optionsViewport: {
+    position: 'relative',
+  },
+  scrollCue: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderLeftColor: colors.border,
+    borderLeftWidth: 1,
+    bottom: 0,
+    justifyContent: 'center',
+    opacity: 0.9,
+    paddingLeft: spacing.xs,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: 24,
   },
   option: {
     alignItems: 'center',
