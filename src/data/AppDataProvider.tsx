@@ -17,8 +17,10 @@ import { getActivityDatabase } from './database';
 import { runMigrations } from './migrations';
 import { createSettingsRepository, type SettingsRepository } from './settingsRepository';
 import {
+  cancelActivityPauseReminder,
   cancelActivityTargetNotification,
   configureActivityNotifications,
+  scheduleActivityPauseReminder,
   scheduleActivityTargetNotification,
 } from '../services/activityNotifications';
 
@@ -183,6 +185,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       if (result.pausedActivityId) {
         cancelActivityTargetNotification(result.pausedActivityId);
       }
+      cancelActivityPauseReminder(id);
       scheduleActivityTargetNotification(result.activity).catch(() => undefined);
       bumpActivityRevision();
     },
@@ -237,6 +240,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       const { activities } = getRepositories();
       await activities.pauseActivity(id);
       cancelActivityTargetNotification(id);
+      const pausedActivity = await activities.getActivityWithLogs(id);
+      if (pausedActivity) {
+        scheduleActivityPauseReminder(pausedActivity).catch(() => undefined);
+      }
       bumpActivityRevision();
     },
     [bumpActivityRevision, getRepositories],
@@ -247,6 +254,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (id: string) => {
       const { activities } = getRepositories();
       await activities.resumeActivity(id);
+      cancelActivityPauseReminder(id);
       const activity = await activities.getActivityWithLogs(id);
       if (activity) {
         scheduleActivityTargetNotification(activity).catch(() => undefined);
@@ -262,6 +270,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       const { activities } = getRepositories();
       await activities.completeActivity(id);
       cancelActivityTargetNotification(id);
+      cancelActivityPauseReminder(id);
       bumpActivityRevision();
     },
     [bumpActivityRevision, getRepositories],
@@ -282,6 +291,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       const { activities } = getRepositories();
       await activities.softDeleteActivity(activity.id);
       cancelActivityTargetNotification(activity.id);
+      cancelActivityPauseReminder(activity.id);
       clearUndo();
       setPendingUndo({
         activityId: activity.id,

@@ -5,6 +5,8 @@
 #import <UserNotifications/UserNotifications.h>
 
 static NSString *const ActivityTargetNotificationType = @"activity-target-reached";
+static NSString *const ActivityPauseReminderType = @"activity-pause-reminder";
+static NSString *const ActivityFocusNotificationCategory = @"activity-focus-notification";
 
 @interface ActivityNotificationManager : NSObject <RCTBridgeModule, UNUserNotificationCenterDelegate>
 @end
@@ -22,7 +24,16 @@ RCT_EXPORT_MODULE();
 {
   self = [super init];
   if (self) {
-    [UNUserNotificationCenter currentNotificationCenter].delegate = self;
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    center.delegate = self;
+    UNNotificationAction *openFocusAction = [UNNotificationAction actionWithIdentifier:@"activity-open-focus"
+                                                                                     title:@"Open Focus"
+                                                                                   options:UNNotificationActionOptionForeground];
+    UNNotificationCategory *category = [UNNotificationCategory categoryWithIdentifier:ActivityFocusNotificationCategory
+                                                                                  actions:@[openFocusAction]
+                                                                        intentIdentifiers:@[]
+                                                                                  options:0];
+    [center setNotificationCategories:[NSSet setWithObject:category]];
   }
   return self;
 }
@@ -54,6 +65,7 @@ RCT_REMAP_METHOD(scheduleTargetNotification,
   UNMutableNotificationContent *content = [UNMutableNotificationContent new];
   content.title = @"Focus target reached";
   content.body = title;
+  content.categoryIdentifier = ActivityFocusNotificationCategory;
   content.sound = [UNNotificationSound defaultSound];
   content.userInfo = @{
     @"activityId": activityId,
@@ -75,10 +87,50 @@ RCT_REMAP_METHOD(scheduleTargetNotification,
   }];
 }
 
+// Schedules one gentle reminder after an activity is paused.
+RCT_REMAP_METHOD(schedulePauseReminder,
+                 schedulePauseReminder:(NSString *)activityId
+                 title:(NSString *)title
+                 delaySeconds:(nonnull NSNumber *)delaySeconds
+                 resolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+  UNMutableNotificationContent *content = [UNMutableNotificationContent new];
+  content.title = @"Keep your momentum";
+  content.body = title;
+  content.categoryIdentifier = ActivityFocusNotificationCategory;
+  content.sound = [UNNotificationSound defaultSound];
+  content.userInfo = @{
+    @"activityId": activityId,
+    @"type": ActivityPauseReminderType,
+  };
+
+  NSTimeInterval delay = MAX(1.0, delaySeconds.doubleValue);
+  UNTimeIntervalNotificationTrigger *trigger = [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:delay repeats:NO];
+  NSString *identifier = [NSString stringWithFormat:@"activity-pause-reminder-%@", activityId];
+  UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:identifier content:content trigger:trigger];
+
+  [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:request
+                                                           withCompletionHandler:^(NSError *_Nullable error) {
+    if (error) {
+      reject(@"activity_notifications_pause_reminder", @"Pause reminder could not be scheduled.", error);
+      return;
+    }
+    resolve(nil);
+  }];
+}
+
 // Cancels the pending target notification for an activity.
 RCT_EXPORT_METHOD(cancelTargetNotification:(NSString *)activityId)
 {
   NSString *identifier = [NSString stringWithFormat:@"activity-target-%@", activityId];
+  [[UNUserNotificationCenter currentNotificationCenter] removePendingNotificationRequestsWithIdentifiers:@[identifier]];
+}
+
+// Cancels the pending reminder for an activity.
+RCT_EXPORT_METHOD(cancelPauseReminder:(NSString *)activityId)
+{
+  NSString *identifier = [NSString stringWithFormat:@"activity-pause-reminder-%@", activityId];
   [[UNUserNotificationCenter currentNotificationCenter] removePendingNotificationRequestsWithIdentifiers:@[identifier]];
 }
 

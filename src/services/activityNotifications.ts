@@ -7,9 +7,12 @@ import { calculateActiveElapsedMs } from '../domain/time';
 type ActivityNotificationManager = {
   requestPermission(): Promise<boolean>;
   scheduleTargetNotification(activityId: string, title: string, delaySeconds: number): Promise<void>;
+  schedulePauseReminder(activityId: string, title: string, delaySeconds: number): Promise<void>;
   cancelTargetNotification(activityId: string): void;
+  cancelPauseReminder(activityId: string): void;
 };
 
+const PAUSE_REMINDER_DELAY_SECONDS = 30 * 60;
 let permissionPromise: Promise<unknown> | null = null;
 const notificationManager = NativeModules.ActivityNotificationManager as ActivityNotificationManager | undefined;
 
@@ -44,6 +47,7 @@ export async function scheduleActivityTargetNotification(activity: ActivityWithL
     }
 
     notificationManager.cancelTargetNotification(activity.id);
+    notificationManager.cancelPauseReminder(activity.id);
 
     const elapsedMs = calculateActiveElapsedMs({
       events: activity.events,
@@ -59,7 +63,7 @@ export async function scheduleActivityTargetNotification(activity: ActivityWithL
 
     await notificationManager.scheduleTargetNotification(
       activity.id,
-      `${activity.title} reached its ${formatTarget(activity.targetDurationMinutes)} focus target.`,
+      `Nice work — ${activity.title} reached its ${formatTarget(activity.targetDurationMinutes)} target. Take a breath, then start another focus session when ready.`,
       remainingMs / 1000,
     );
   } catch (error) {
@@ -70,6 +74,35 @@ export async function scheduleActivityTargetNotification(activity: ActivityWithL
 // Cancels the pending target notification for an activity after pause, completion, or deletion.
 export function cancelActivityTargetNotification(activityId: string): void {
   notificationManager?.cancelTargetNotification(activityId);
+}
+
+// Schedules one gentle reminder for a paused activity so momentum is easy to recover.
+export async function scheduleActivityPauseReminder(activity: ActivityWithLogs): Promise<void> {
+  try {
+    await ensureNotificationPermission();
+    if (!notificationManager) {
+      return;
+    }
+
+    notificationManager.cancelPauseReminder(activity.id);
+    notificationManager.cancelTargetNotification(activity.id);
+    if (activity.status !== 'paused') {
+      return;
+    }
+
+    await notificationManager.schedulePauseReminder(
+      activity.id,
+      `Ready to resume ${activity.title}? A short focus session can keep your momentum going.`,
+      PAUSE_REMINDER_DELAY_SECONDS,
+    );
+  } catch (error) {
+    console.warn('Could not schedule activity pause reminder', error);
+  }
+}
+
+// Cancels a paused-activity reminder after resume, completion, or deletion.
+export function cancelActivityPauseReminder(activityId: string): void {
+  notificationManager?.cancelPauseReminder(activityId);
 }
 
 // Formats notification copy without coupling this service to UI formatting helpers.

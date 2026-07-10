@@ -5,7 +5,9 @@ import type { ActivityWithLogs } from '../src/domain/activityTypes';
 const notificationManager = {
   requestPermission: jest.fn<Promise<boolean>, []>(),
   scheduleTargetNotification: jest.fn<Promise<void>, [string, string, number]>(),
+  schedulePauseReminder: jest.fn<Promise<void>, [string, string, number]>(),
   cancelTargetNotification: jest.fn<void, [string]>(),
+  cancelPauseReminder: jest.fn<void, [string]>(),
 };
 
 let notificationService: typeof import('../src/services/activityNotifications');
@@ -33,6 +35,7 @@ describe('activity target notifications', () => {
     jest.clearAllMocks();
     notificationManager.requestPermission.mockResolvedValue(true);
     notificationManager.scheduleTargetNotification.mockResolvedValue(undefined);
+    notificationManager.schedulePauseReminder.mockResolvedValue(undefined);
     jest.doMock('react-native', () => {
       return {
         NativeModules: { ActivityNotificationManager: notificationManager },
@@ -48,7 +51,7 @@ describe('activity target notifications', () => {
     expect(notificationManager.cancelTargetNotification).toHaveBeenCalledWith('activity-1');
     expect(notificationManager.scheduleTargetNotification).toHaveBeenCalledWith(
       'activity-1',
-      'Meditation reached its 1 hour focus target.',
+      'Nice work — Meditation reached its 1 hour target. Take a breath, then start another focus session when ready.',
       30 * 60,
     );
   });
@@ -70,6 +73,24 @@ describe('activity target notifications', () => {
 
     expect(notificationManager.cancelTargetNotification).toHaveBeenCalledTimes(2);
     expect(notificationManager.scheduleTargetNotification).not.toHaveBeenCalled();
+  });
+
+  it('schedules a single encouraging reminder for a paused activity', async () => {
+    await notificationService.scheduleActivityPauseReminder(activity({ status: 'paused' }));
+
+    expect(notificationManager.cancelPauseReminder).toHaveBeenCalledWith('activity-1');
+    expect(notificationManager.cancelTargetNotification).toHaveBeenCalledWith('activity-1');
+    expect(notificationManager.schedulePauseReminder).toHaveBeenCalledWith(
+      'activity-1',
+      'Ready to resume Meditation? A short focus session can keep your momentum going.',
+      30 * 60,
+    );
+  });
+
+  it('does not schedule a pause reminder for an active activity', async () => {
+    await notificationService.scheduleActivityPauseReminder(activity({ status: 'active' }));
+
+    expect(notificationManager.schedulePauseReminder).not.toHaveBeenCalled();
   });
 
   it('does not schedule an active activity after its target has elapsed', async () => {
