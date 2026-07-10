@@ -19,11 +19,11 @@ export function UndoToast() {
       <Text numberOfLines={1} style={styles.message}>
         Deleted {pendingUndo.title}
       </Text>
-      <Pressable accessibilityRole="button" onPress={undoDelete} style={styles.action}>
+      <Pressable accessibilityLabel={`Undo delete ${pendingUndo.title}`} accessibilityRole="button" onPress={undoDelete} style={styles.action}>
         <RotateCcw color={colors.surface} size={18} />
         <Text style={styles.actionText}>Undo</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" hitSlop={8} onPress={clearUndo} style={styles.closeButton}>
+      <Pressable accessibilityLabel="Dismiss delete notification" accessibilityRole="button" hitSlop={8} onPress={clearUndo} style={styles.closeButton}>
         <X color={colors.surface} size={18} />
       </Pressable>
     </View>

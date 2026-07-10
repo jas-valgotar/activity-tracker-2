@@ -43,8 +43,8 @@ export function calculateDailyStreak(activities: ActivityWithLogs[], now = Date.
   return streak;
 }
 
-// Calculates the longest completed-day streak in the user's history.
-export function calculateBestDailyStreak(activities: ActivityWithLogs[]): number {
+// Calculates the user's all-time longest completed-day streak.
+export function calculateAllTimeStreak(activities: ActivityWithLogs[]): number {
   const completedDays = getCompletedDays(activities);
   let bestStreak = 0;
 

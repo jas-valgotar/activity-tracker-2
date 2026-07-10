@@ -195,13 +195,13 @@ export function ActivityDetailScreen() {
       ) : null}
       <View style={styles.actions}>
         {!isCompleted ? (
-          <Pressable accessibilityRole="button" onPress={handlePauseResume} style={[styles.actionButton, styles.secondaryButton]}>
+          <Pressable accessibilityLabel={`${isPaused ? 'Resume' : 'Pause'} ${activity.title}`} accessibilityRole="button" onPress={handlePauseResume} style={[styles.actionButton, styles.secondaryButton]}>
             {isPaused ? <Play color={colors.text} size={18} /> : <Pause color={colors.text} size={18} />}
             <Text style={styles.secondaryText}>{isPaused ? 'Resume' : 'Pause'}</Text>
           </Pressable>
         ) : null}
         {!isCompleted ? (
-          <Pressable accessibilityRole="button" onPress={handleComplete} style={[styles.actionButton, styles.primaryButton]}>
+          <Pressable accessibilityLabel={`Complete ${activity.title}`} accessibilityRole="button" onPress={handleComplete} style={[styles.actionButton, styles.primaryButton]}>
             <CheckCircle2 color={colors.surface} size={18} />
             <Text style={styles.primaryText}>Complete</Text>
           </Pressable>

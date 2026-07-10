@@ -57,6 +57,7 @@ export function ActivityRow({
       <View style={styles.actions}>
         {activity.status !== 'completed' ? (
           <Pressable
+            accessibilityLabel={`${isPaused ? 'Resume' : 'Pause'} ${activity.title}`}
             accessibilityRole="button"
             onPress={() => (isPaused ? onResume(activity) : onPause(activity))}
             style={[styles.actionButton, styles.neutralAction]}
@@ -66,6 +67,7 @@ export function ActivityRow({
         ) : null}
         {canComplete ? (
           <Pressable
+            accessibilityLabel={`Complete ${activity.title}`}
             accessibilityRole="button"
             onPress={() => onComplete(activity)}
             style={[styles.actionButton, styles.completeAction]}
@@ -73,7 +75,7 @@ export function ActivityRow({
             <CheckCircle2 color={colors.surface} size={18} />
           </Pressable>
         ) : null}
-        <Pressable accessibilityRole="button" onPress={confirmDelete} style={[styles.actionButton, styles.deleteAction]}>
+        <Pressable accessibilityLabel={`Delete ${activity.title}`} accessibilityRole="button" onPress={confirmDelete} style={[styles.actionButton, styles.deleteAction]}>
           <Trash2 color={colors.surface} size={18} />
         </Pressable>
       </View>
@@ -83,6 +85,7 @@ export function ActivityRow({
   return (
     <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
       <Pressable
+        accessibilityLabel={`Open ${activity.title}, ${activity.status === 'active' ? 'in focus' : activity.status}`}
         accessibilityRole="button"
         onPress={() => onPress(activity)}
         style={[styles.row, { backgroundColor: palette.background, borderColor: palette.border }]}

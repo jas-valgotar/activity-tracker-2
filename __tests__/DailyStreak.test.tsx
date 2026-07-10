@@ -1,4 +1,4 @@
-// Overview: Verifies the streak card exposes current and best streak values to users.
+// Overview: Verifies the streak card exposes separate daily and all-time streak values to users.
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
@@ -22,13 +22,15 @@ describe('DailyStreak', () => {
     let testRenderer: renderer.ReactTestRenderer | undefined;
 
     act(() => {
-      testRenderer = renderer.create(<DailyStreak bestDays={5} days={2} />);
+      testRenderer = renderer.create(<DailyStreak allTimeDays={5} dailyDays={2} />);
     });
 
     const renderedText = collectText(testRenderer!.toJSON() as RenderedNode);
 
-    expect(testRenderer!.root.findByProps({ accessibilityLabel: '2 day activity streak' })).toBeTruthy();
-    expect(renderedText).toContain('2 days completed');
+    expect(testRenderer!.root.findByProps({ accessibilityLabel: '2 day daily streak and 5 day all time streak' })).toBeTruthy();
+    expect(renderedText).toContain('DAILY STREAK');
+    expect(renderedText).toContain('ALL-TIME STREAK');
+    expect(renderedText).toContain('2 days');
     expect(renderedText).toContain('5 days');
 
     act(() => {

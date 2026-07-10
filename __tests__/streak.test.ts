@@ -1,7 +1,7 @@
 // Overview: Tests consecutive local-day completion streak behavior.
 
 import type { ActivityWithLogs } from '../src/domain/activityTypes';
-import { calculateBestDailyStreak, calculateDailyStreak } from '../src/domain/streak';
+import { calculateAllTimeStreak, calculateDailyStreak } from '../src/domain/streak';
 
 // Creates the minimum activity history needed to test a completion day.
 function completedActivity(completedAt: number): ActivityWithLogs {
@@ -53,6 +53,6 @@ describe('daily streak calculations', () => {
     const dayThree = new Date(2026, 5, 3, 18, 0, 0).getTime();
     const laterDay = new Date(2026, 5, 10, 18, 0, 0).getTime();
 
-    expect(calculateBestDailyStreak([completedActivity(dayOne), completedActivity(dayTwo), completedActivity(dayThree), completedActivity(laterDay)])).toBe(3);
+    expect(calculateAllTimeStreak([completedActivity(dayOne), completedActivity(dayTwo), completedActivity(dayThree), completedActivity(laterDay)])).toBe(3);
   });
 });
