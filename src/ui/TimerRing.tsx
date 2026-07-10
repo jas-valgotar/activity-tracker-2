@@ -1,10 +1,10 @@
-// Overview: Renders a curvy, softly shaded hourglass timer with proportional sand and a gentle falling-grain animation.
+// Overview: Renders a curvy hourglass with physically inspired sand piles, a continuous stream, and a falling-grain animation.
 
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { formatDuration } from '../domain/time';
-import { colors } from './theme';
+import { colors, radii } from './theme';
 
 type TimerRingProps = {
   accentColor?: string;
@@ -75,21 +75,32 @@ function getTopSandPath(progress: number): string {
   ].join(' ');
 }
 
-// Builds the lower sand chamber, which fills upward from the base.
+// Builds a central lower sand pile that expands naturally until it fills the entire lower chamber.
 function getBottomSandPath(progress: number): string {
+  const normalizedProgress = Math.min(Math.max(progress, 0), 1);
+
+  if (normalizedProgress >= 1) {
+    return [
+      `M ${GLASS_CENTER - NECK_WIDTH / 2} ${GLASS_NECK}`,
+      `L ${GLASS_CENTER + NECK_WIDTH / 2} ${GLASS_NECK}`,
+      `C ${GLASS_CENTER + 9} ${GLASS_NECK + 7}, ${GLASS_RIGHT - 4} ${GLASS_BOTTOM - 8}, ${GLASS_RIGHT} ${GLASS_BOTTOM}`,
+      `L ${GLASS_LEFT} ${GLASS_BOTTOM}`,
+      `C ${GLASS_LEFT + 4} ${GLASS_BOTTOM - 8}, ${GLASS_CENTER - 9} ${GLASS_NECK + 7}, ${GLASS_CENTER - NECK_WIDTH / 2} ${GLASS_NECK}`,
+      'Z',
+    ].join(' ');
+  }
+
   const chamberHeight = GLASS_BOTTOM - GLASS_NECK;
-  const depth = 3 + progress * (chamberHeight - 3);
-  const surfaceY = GLASS_BOTTOM - depth;
-  const surfaceWidth = Math.max(
-    NECK_WIDTH,
-    NECK_WIDTH + ((GLASS_BOTTOM - surfaceY) / chamberHeight) * (GLASS_WIDTH - NECK_WIDTH),
+  const pileHeight = normalizedProgress * chamberHeight;
+  const pileBaseWidth = normalizedProgress === 0 ? 0 : Math.min(
+    GLASS_WIDTH,
+    NECK_WIDTH + Math.sqrt(normalizedProgress) * (GLASS_WIDTH - NECK_WIDTH),
   );
 
   return [
-    `M ${GLASS_LEFT} ${GLASS_BOTTOM}`,
-    `L ${GLASS_RIGHT} ${GLASS_BOTTOM}`,
-    `L ${GLASS_CENTER + surfaceWidth / 2} ${surfaceY}`,
-    `L ${GLASS_CENTER - surfaceWidth / 2} ${surfaceY}`,
+    `M ${GLASS_CENTER - pileBaseWidth / 2} ${GLASS_BOTTOM}`,
+    `Q ${GLASS_CENTER - pileBaseWidth * 0.12} ${GLASS_BOTTOM - pileHeight * 0.18}, ${GLASS_CENTER} ${GLASS_BOTTOM - pileHeight}`,
+    `Q ${GLASS_CENTER + pileBaseWidth * 0.12} ${GLASS_BOTTOM - pileHeight * 0.18}, ${GLASS_CENTER + pileBaseWidth / 2} ${GLASS_BOTTOM}`,
     'Z',
   ].join(' ');
 }
@@ -121,8 +132,8 @@ export function TimerRing({
       Animated.sequence([
         Animated.timing(sandFlow, {
           toValue: 1,
-          duration: 1_100,
-          easing: Easing.linear,
+          duration: 950,
+          easing: Easing.in(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(sandFlow, {
@@ -145,6 +156,10 @@ export function TimerRing({
   const fallingGrainOpacity = sandFlow.interpolate({
     inputRange: [0, 0.15, 0.8, 1],
     outputRange: [0, 1, 1, 0],
+  });
+  const fallingStreamOpacity = sandFlow.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.28, 0.72, 0.28],
   });
 
   return (
@@ -187,27 +202,35 @@ export function TimerRing({
             strokeWidth={0.8}
           />
         ) : null}
-        <Path
-          d={getBottomSandPath(progress)}
-          fill={sandColor}
-          fillOpacity={0.92}
-          stroke={colors.text}
-          strokeOpacity={0.12}
-          strokeWidth={0.8}
-        />
+        {progress > 0 ? (
+          <Path
+            d={getBottomSandPath(progress)}
+            fill={sandColor}
+            fillOpacity={0.92}
+            stroke={colors.text}
+            strokeOpacity={0.12}
+            strokeWidth={0.8}
+          />
+        ) : null}
       </Svg>
       {blinkNextSpike && !frozen && !isAtEnd ? (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.fallingGrain,
-            {
-              backgroundColor: sandColor,
-              opacity: fallingGrainOpacity,
-              transform: [{ translateY: fallingGrainOffset }],
-            },
-          ]}
-        />
+        <>
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.fallingStream, { backgroundColor: sandColor, opacity: fallingStreamOpacity }]}
+          />
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.fallingGrain,
+              {
+                backgroundColor: sandColor,
+                opacity: fallingGrainOpacity,
+                transform: [{ translateY: fallingGrainOffset }],
+              },
+            ]}
+          />
+        </>
       ) : null}
       <View style={[styles.labelContainer, { backgroundColor: labelBackgroundColor }]}>
         <Text
@@ -240,6 +263,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: GLASS_NECK - 9,
     width: 4.5,
+  },
+  fallingStream: {
+    borderRadius: radii.pill,
+    height: 8,
+    left: GLASS_CENTER - 1,
+    position: 'absolute',
+    top: GLASS_NECK - 1,
+    width: 2,
   },
   labelContainer: {
     alignItems: 'center',

@@ -59,6 +59,21 @@ describe('activity repository', () => {
     expect(second.status).toBe('active');
   });
 
+  it('pauses the current activity and starts the requested activity as one switch', async () => {
+    const { activities } = await createRepositories();
+    const first = await activities.createActivity('First focus');
+
+    const result = await activities.pauseCurrentAndCreateActivity('Second focus', 37);
+    const pausedFirst = await activities.getActivityWithLogs(first.id);
+
+    expect(result.activity.title).toBe('Second focus');
+    expect(result.activity.status).toBe('active');
+    expect(result.activity.targetDurationMinutes).toBe(37);
+    expect(result.pausedActivityId).toBe(first.id);
+    expect(pausedFirst?.status).toBe('paused');
+    expect(pausedFirst?.events.at(-1)?.type).toBe('paused');
+  });
+
   it('prevents resuming a paused activity while another activity is active', async () => {
     const { activities } = await createRepositories();
     const first = await activities.createActivity('First focus');

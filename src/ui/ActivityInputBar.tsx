@@ -9,10 +9,11 @@ import { colors, radii, spacing } from './theme';
 
 type ActivityInputBarProps = {
   onAdd(title: string, durationMinutes?: number): Promise<void>;
+  onPauseCurrentAndStart(title: string, durationMinutes?: number): Promise<void>;
 };
 
 // Renders the bottom activity entry bar on the default home screen.
-export function ActivityInputBar({ onAdd }: ActivityInputBarProps) {
+export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInputBarProps) {
   const speechService = useMemo(() => createSpeechRecognitionService(), []);
   const [title, setTitle] = useState('');
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
@@ -32,7 +33,25 @@ export function ActivityInputBar({ onAdd }: ActivityInputBarProps) {
       setTitle('');
       setDurationMinutes(null);
     } catch (error) {
-      Alert.alert('Could Not Start Activity', error instanceof Error ? error.message : 'Please try again.');
+      if (isActiveActivityConflict(error)) {
+        Alert.alert('Activity In Progress', 'Pause the current activity and start this one?', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Pause & Start',
+            onPress: async () => {
+              try {
+                await onPauseCurrentAndStart(trimmedTitle, durationMinutes ?? undefined);
+                setTitle('');
+                setDurationMinutes(null);
+              } catch (switchError) {
+                Alert.alert('Could Not Switch Activity', getErrorMessage(switchError));
+              }
+            },
+          },
+        ]);
+      } else {
+        Alert.alert('Could Not Start Activity', getErrorMessage(error));
+      }
     } finally {
       setIsAdding(false);
     }
@@ -106,6 +125,16 @@ export function ActivityInputBar({ onAdd }: ActivityInputBarProps) {
       </View>
     </View>
   );
+}
+
+// Identifies the single-active-activity guard so the user can explicitly switch focus.
+function isActiveActivityConflict(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('Only one activity can be active');
+}
+
+// Converts unknown action errors into concise user-facing copy.
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Please try again.';
 }
 
 const styles = StyleSheet.create({

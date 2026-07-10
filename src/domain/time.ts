@@ -117,6 +117,12 @@ export function getHighlightedSpikeCount({
   return Math.min(TIMER_FRAME_SEGMENTS, highlightedSpikes);
 }
 
+// Converts active time into a capped percentage of the activity's selected target.
+export function getTargetProgressPercent(activeMs: number, targetDurationMinutes: number): number {
+  const targetMs = normalizeTargetDurationMinutes(targetDurationMinutes) * MINUTE_MS;
+  return Math.min(100, Math.max(0, (Math.max(0, activeMs) / targetMs) * 100));
+}
+
 // Formats elapsed milliseconds as one-decimal hours for the timer ring center.
 export function formatElapsedHours(elapsedMs: number): string {
   return (elapsedMs / HOUR_MS).toFixed(1);

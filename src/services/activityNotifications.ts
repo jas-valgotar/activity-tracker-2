@@ -1,0 +1,85 @@
+// Overview: Schedules local target-completion notifications and triggers haptics when they arrive in the foreground.
+
+import { NativeModules } from 'react-native';
+import type { ActivityWithLogs } from '../domain/activityTypes';
+import { calculateActiveElapsedMs } from '../domain/time';
+
+type ActivityNotificationManager = {
+  requestPermission(): Promise<boolean>;
+  scheduleTargetNotification(activityId: string, title: string, delaySeconds: number): Promise<void>;
+  cancelTargetNotification(activityId: string): void;
+};
+
+let permissionPromise: Promise<unknown> | null = null;
+const notificationManager = NativeModules.ActivityNotificationManager as ActivityNotificationManager | undefined;
+
+// Confirms the native notification module is loaded; the native delegate self-registers at app startup.
+export function configureActivityNotifications(): void {
+  if (!notificationManager) {
+    console.warn('Activity notification native module is unavailable.');
+  }
+}
+
+// Requests notification permission once and keeps activity creation independent of permission failures.
+async function ensureNotificationPermission(): Promise<void> {
+  if (!notificationManager) {
+    return;
+  }
+
+  if (!permissionPromise) {
+    permissionPromise = notificationManager.requestPermission().catch(error => {
+      console.warn('Activity notifications are unavailable', error);
+    });
+  }
+
+  await permissionPromise;
+}
+
+// Schedules a local notification for the remaining active time of one activity.
+export async function scheduleActivityTargetNotification(activity: ActivityWithLogs, now = Date.now()): Promise<void> {
+  try {
+    await ensureNotificationPermission();
+    if (!notificationManager) {
+      return;
+    }
+
+    notificationManager.cancelTargetNotification(activity.id);
+
+    const elapsedMs = calculateActiveElapsedMs({
+      events: activity.events,
+      status: activity.status,
+      now,
+    });
+    const targetMs = activity.targetDurationMinutes * 60_000;
+    const remainingMs = targetMs - elapsedMs;
+
+    if (activity.status !== 'active' || remainingMs <= 0) {
+      return;
+    }
+
+    await notificationManager.scheduleTargetNotification(
+      activity.id,
+      `${activity.title} reached its ${formatTarget(activity.targetDurationMinutes)} focus target.`,
+      remainingMs / 1000,
+    );
+  } catch (error) {
+    console.warn('Could not schedule activity target notification', error);
+  }
+}
+
+// Cancels the pending target notification for an activity after pause, completion, or deletion.
+export function cancelActivityTargetNotification(activityId: string): void {
+  notificationManager?.cancelTargetNotification(activityId);
+}
+
+// Formats notification copy without coupling this service to UI formatting helpers.
+function formatTarget(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (hours === 0) {
+    return `${minutes} minutes`;
+  }
+
+  return remainingMinutes === 0 ? `${hours} hour${hours === 1 ? '' : 's'}` : `${hours}h ${remainingMinutes}m`;
+}

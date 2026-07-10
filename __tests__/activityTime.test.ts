@@ -8,6 +8,7 @@ import {
   formatDurationWithSeconds,
   formatElapsedHours,
   getHighlightedSpikeCount,
+  getTargetProgressPercent,
 } from '../src/domain/time';
 
 // Creates a minimal activity event for elapsed-time tests.
@@ -41,6 +42,13 @@ describe('activity time calculations', () => {
     expect(getHighlightedSpikeCount({ elapsedMs: 30 * 60 * 1000, targetDurationMinutes: 30 })).toBe(30);
     expect(getHighlightedSpikeCount({ elapsedMs: 45 * 60 * 1000, targetDurationMinutes: 30 })).toBe(30);
     expect(getHighlightedSpikeCount({ elapsedMs: 60 * 60 * 1000, showFullRingAtBoundary: true })).toBe(30);
+  });
+
+  it('scales progress bars against the selected target and caps completed time', () => {
+    expect(getTargetProgressPercent(30 * 60 * 1000, 60)).toBe(50);
+    expect(getTargetProgressPercent(60 * 60 * 1000, 60)).toBe(100);
+    expect(getTargetProgressPercent(90 * 60 * 1000, 60)).toBe(100);
+    expect(getTargetProgressPercent(0, 60)).toBe(0);
   });
 
   it('formats elapsed hours with one decimal place', () => {

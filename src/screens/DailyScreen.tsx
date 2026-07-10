@@ -16,7 +16,7 @@ import { colors, radii, spacing } from '../ui/theme';
 // Renders daily shortcuts and starts them as regular activities.
 export function DailyScreen() {
   const navigation = useNavigation<NavigationProp<MainTabParamList>>();
-  const { listPresets, createPreset, updatePreset, deletePreset, createActivity } = useAppData();
+  const { listPresets, createPreset, updatePreset, deletePreset, createActivity, pauseCurrentAndCreateActivity } = useAppData();
   const [presets, setPresets] = useState<ActivityPreset[]>([]);
   const [editorPreset, setEditorPreset] = useState<ActivityPreset | null>(null);
   const [isEditorVisible, setIsEditorVisible] = useState(false);
@@ -74,8 +74,35 @@ export function DailyScreen() {
       await createActivity(preset.title, preset.durationMinutes);
       navigation.navigate('Home');
     } catch (error) {
-      Alert.alert('Could Not Start Activity', error instanceof Error ? error.message : 'Pause the current activity first.');
+      if (isActiveActivityConflict(error)) {
+        Alert.alert('Activity In Progress', 'Pause the current activity and start this one?', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Pause & Start',
+            onPress: async () => {
+              try {
+                await pauseCurrentAndCreateActivity(preset.title, preset.durationMinutes);
+                navigation.navigate('Home');
+              } catch (switchError) {
+                Alert.alert('Could Not Switch Activity', getErrorMessage(switchError));
+              }
+            },
+          },
+        ]);
+      } else {
+        Alert.alert('Could Not Start Activity', getErrorMessage(error));
+      }
     }
+  }
+
+  // Identifies the single-active-activity guard so a preset can offer a focus switch.
+  function isActiveActivityConflict(error: unknown): boolean {
+    return error instanceof Error && error.message.includes('Only one activity can be active');
+  }
+
+  // Converts unknown start errors into concise user-facing copy.
+  function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Please try again.';
   }
 
   return (

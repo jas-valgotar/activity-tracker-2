@@ -3,7 +3,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ProgressPeriod, ProgressReport } from '../domain/activityTypes';
-import { formatDuration, formatTargetDuration } from '../domain/time';
+import { formatDuration, formatTargetDuration, getTargetProgressPercent } from '../domain/time';
 import { colors, radii, spacing } from './theme';
 
 type ActivityProgressCardProps = {
@@ -21,9 +21,7 @@ const PERIODS: Array<{ value: ProgressPeriod; label: string }> = [
 
 // Renders progress for the currently opened activity rather than aggregating all activities.
 export function ActivityProgressCard({ report, period, targetDurationMinutes, onChangePeriod }: ActivityProgressCardProps) {
-  const maxActiveMs = Math.max(...report.buckets.map(bucket => bucket.activeMs), 1);
-  const targetMs = targetDurationMinutes * 60 * 1000;
-  const targetPercent = Math.min(100, Math.round((report.totalActiveMs / targetMs) * 100));
+  const targetPercent = Math.round(getTargetProgressPercent(report.totalActiveMs, targetDurationMinutes));
 
   return (
     <View style={styles.card}>
@@ -55,7 +53,8 @@ export function ActivityProgressCard({ report, period, targetDurationMinutes, on
       </View>
       <View style={styles.chart}>
         {report.buckets.map(bucket => {
-          const heightPercent = bucket.activeMs === 0 ? 0 : Math.max(5, (bucket.activeMs / maxActiveMs) * 100);
+          const bucketPercent = getTargetProgressPercent(bucket.activeMs, targetDurationMinutes);
+          const heightPercent = bucketPercent === 0 ? 0 : Math.max(5, bucketPercent);
           return (
             <View key={bucket.key} style={styles.barColumn}>
               <View style={styles.barTrack}>

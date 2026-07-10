@@ -10,7 +10,7 @@ import { colors } from '../ui/theme';
 
 // Shows active and paused activities and lets the user start a new activity.
 export function HomeScreen() {
-  const { createActivity } = useAppData();
+  const { createActivity, pauseCurrentAndCreateActivity } = useAppData();
 
   // Creates a new activity and lets the list reload through focus or manual refresh.
   const handleAddActivity = useCallback(
@@ -29,7 +29,7 @@ export function HomeScreen() {
       <View style={styles.container}>
         <ScreenHeader title="Focus" subtitle="Keep the important things moving." />
         <ActivityList filter="home" emptyText="No Activity Started" />
-        <ActivityInputBar onAdd={handleAddActivity} />
+      <ActivityInputBar onAdd={handleAddActivity} onPauseCurrentAndStart={pauseCurrentAndCreateActivity} />
       </View>
     </KeyboardAvoidingView>
   );

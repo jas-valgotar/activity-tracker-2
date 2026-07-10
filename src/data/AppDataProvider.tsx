@@ -16,6 +16,11 @@ import { createActivityPresetRepository, type ActivityPresetRepository } from '.
 import { getActivityDatabase } from './database';
 import { runMigrations } from './migrations';
 import { createSettingsRepository, type SettingsRepository } from './settingsRepository';
+import {
+  cancelActivityTargetNotification,
+  configureActivityNotifications,
+  scheduleActivityTargetNotification,
+} from '../services/activityNotifications';
 
 type UndoState = {
   activityId: string;
@@ -32,6 +37,7 @@ type AppDataContextValue = {
   listActivities(filter: ActivityFilter): Promise<ActivityWithLogs[]>;
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
   createActivity(title: string, targetDurationMinutes?: number): Promise<void>;
+  pauseCurrentAndCreateActivity(title: string, targetDurationMinutes?: number): Promise<void>;
   listPresets(): Promise<ActivityPreset[]>;
   createPreset(title: string, durationMinutes: number): Promise<void>;
   updatePreset(id: string, title: string, durationMinutes: number): Promise<void>;
@@ -79,6 +85,14 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       repositoriesRef.current = { activities, presets, settings };
       setSortModeState(savedSortMode);
       setIsReady(true);
+      configureActivityNotifications();
+
+      const activeActivity = (await activities.listActivities('all', DEFAULT_SORT_MODE)).find(
+        activity => activity.status === 'active',
+      );
+      if (activeActivity) {
+        scheduleActivityTargetNotification(activeActivity).catch(() => undefined);
+      }
     }
 
     initialize().catch(error => {
@@ -139,7 +153,22 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const createActivity = useCallback(
     async (title: string, targetDurationMinutes?: number) => {
       const { activities } = getRepositories();
-      await activities.createActivity(title, targetDurationMinutes);
+      const activity = await activities.createActivity(title, targetDurationMinutes);
+      scheduleActivityTargetNotification(activity).catch(() => undefined);
+      bumpActivityRevision();
+    },
+    [bumpActivityRevision, getRepositories],
+  );
+
+  // Pauses the current focus and starts a new activity after the user confirms the switch.
+  const pauseCurrentAndCreateActivity = useCallback(
+    async (title: string, targetDurationMinutes?: number) => {
+      const { activities } = getRepositories();
+      const result = await activities.pauseCurrentAndCreateActivity(title, targetDurationMinutes);
+      if (result.pausedActivityId) {
+        cancelActivityTargetNotification(result.pausedActivityId);
+      }
+      scheduleActivityTargetNotification(result.activity).catch(() => undefined);
       bumpActivityRevision();
     },
     [bumpActivityRevision, getRepositories],
@@ -192,6 +221,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (id: string) => {
       const { activities } = getRepositories();
       await activities.pauseActivity(id);
+      cancelActivityTargetNotification(id);
       bumpActivityRevision();
     },
     [bumpActivityRevision, getRepositories],
@@ -202,6 +232,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (id: string) => {
       const { activities } = getRepositories();
       await activities.resumeActivity(id);
+      const activity = await activities.getActivityWithLogs(id);
+      if (activity) {
+        scheduleActivityTargetNotification(activity).catch(() => undefined);
+      }
       bumpActivityRevision();
     },
     [bumpActivityRevision, getRepositories],
@@ -212,6 +246,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (id: string) => {
       const { activities } = getRepositories();
       await activities.completeActivity(id);
+      cancelActivityTargetNotification(id);
       bumpActivityRevision();
     },
     [bumpActivityRevision, getRepositories],
@@ -231,6 +266,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (activity: ActivityWithLogs) => {
       const { activities } = getRepositories();
       await activities.softDeleteActivity(activity.id);
+      cancelActivityTargetNotification(activity.id);
       clearUndo();
       setPendingUndo({
         activityId: activity.id,
@@ -254,6 +290,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
     const { activities } = getRepositories();
     await activities.restoreActivity(pendingUndo.activityId);
+    const restoredActivity = await activities.getActivityWithLogs(pendingUndo.activityId);
+    if (restoredActivity?.status === 'active') {
+      scheduleActivityTargetNotification(restoredActivity).catch(() => undefined);
+    }
     clearUndo();
     bumpActivityRevision();
   }, [bumpActivityRevision, clearUndo, getRepositories, pendingUndo]);
@@ -268,6 +308,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       listActivities,
       getActivityWithLogs,
       createActivity,
+      pauseCurrentAndCreateActivity,
       listPresets,
       createPreset,
       updatePreset,
@@ -289,6 +330,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       listActivities,
       getActivityWithLogs,
       createActivity,
+      pauseCurrentAndCreateActivity,
       listPresets,
       createPreset,
       updatePreset,

@@ -38,6 +38,7 @@ type DbEventRow = {
 
 export type ActivityRepository = {
   createActivity(title: string, targetDurationMinutes?: number): Promise<ActivityWithLogs>;
+  pauseCurrentAndCreateActivity(title: string, targetDurationMinutes?: number): Promise<ActivityStartResult>;
   listActivities(filter: ActivityFilter, sortMode: ActivitySortMode): Promise<ActivityWithLogs[]>;
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
   getActivityProgressReport(id: string, period: ProgressPeriod, now?: number): Promise<ProgressReport>;
@@ -46,6 +47,11 @@ export type ActivityRepository = {
   completeActivity(id: string): Promise<void>;
   softDeleteActivity(id: string): Promise<void>;
   restoreActivity(id: string): Promise<void>;
+};
+
+export type ActivityStartResult = {
+  activity: ActivityWithLogs;
+  pausedActivityId: string | null;
 };
 
 // Creates a repository that owns activity persistence and lifecycle event logging.
@@ -90,13 +96,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
   return {
     // Starts a new active activity and records its start event.
     async createActivity(title, targetDurationMinutes = DEFAULT_TARGET_DURATION_MINUTES) {
-      const trimmedTitle = title.trim();
-      if (!trimmedTitle) {
-        throw new Error('Activity title is required.');
-      }
-      if (!isValidTargetDurationMinutes(targetDurationMinutes)) {
-        throw new Error('Activity duration must be a whole number of minutes between 15 minutes and 8 hours.');
-      }
+      const trimmedTitle = validateActivityInput(title, targetDurationMinutes);
       await ensureNoOtherActiveActivity();
 
       const now = Date.now();
@@ -119,6 +119,47 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
       }
 
       return activity;
+    },
+
+    // Pauses the current active activity and starts the requested activity in one database batch.
+    async pauseCurrentAndCreateActivity(title, targetDurationMinutes = DEFAULT_TARGET_DURATION_MINUTES) {
+      const trimmedTitle = validateActivityInput(title, targetDurationMinutes);
+      const activeResult = await db.execute(
+        "SELECT id FROM activities WHERE status = 'active' AND deleted_at IS NULL LIMIT 1",
+      );
+      const pausedActivityId = (activeResult.rows[0] as { id?: string } | undefined)?.id ?? null;
+      const now = Date.now();
+      const id = createId();
+      const commands: Array<[string, Array<string | number | null>]> = [];
+
+      if (pausedActivityId) {
+        commands.push(
+          ['UPDATE activities SET status = ?, last_accessed_at = ? WHERE id = ?', ['paused', now, pausedActivityId]],
+          [
+            'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
+            [createId(), pausedActivityId, 'paused', now],
+          ],
+        );
+      }
+
+      commands.push(
+        [
+          'INSERT INTO activities (id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [id, trimmedTitle, 'active', now, targetDurationMinutes, null, now, null],
+        ],
+        [
+          'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
+          [createId(), id, 'started', now],
+        ],
+      );
+      await db.executeBatch(commands);
+
+      const activity = await this.getActivityWithLogs(id);
+      if (!activity) {
+        throw new Error('Activity could not be loaded after switching focus.');
+      }
+
+      return { activity, pausedActivityId };
     },
 
     // Lists non-deleted activities for the requested screen and sort mode.
@@ -273,6 +314,19 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
 
     return result.rows.length > 0;
   }
+}
+
+// Validates activity input before either normal or focus-switch creation writes to SQLite.
+function validateActivityInput(title: string, targetDurationMinutes: number): string {
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle) {
+    throw new Error('Activity title is required.');
+  }
+  if (!isValidTargetDurationMinutes(targetDurationMinutes)) {
+    throw new Error('Activity duration must be a whole number of minutes between 15 minutes and 8 hours.');
+  }
+
+  return trimmedTitle;
 }
 
 // Returns the screen-specific SQL filter for non-deleted activity lists.
