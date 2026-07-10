@@ -44,10 +44,12 @@ export async function runMigrations(db: DatabaseClient): Promise<void> {
       id TEXT PRIMARY KEY NOT NULL,
       title TEXT NOT NULL,
       duration_minutes INTEGER NOT NULL,
+      reminder_time_minutes INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )
   `);
+  await ensurePresetReminderColumn(db);
   await db.execute(
     'INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)',
     ['activity_sort_mode', DEFAULT_SORT_MODE],
@@ -103,19 +105,27 @@ async function seedDefaultPresets(db: DatabaseClient): Promise<void> {
   const now = Date.now();
   await db.executeBatch([
     [
-      'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      ['preset-meditation', 'Meditation', 30, now, now],
+      'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ['preset-meditation', 'Meditation', 30, null, now, now],
     ],
     [
-      'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      ['preset-deep-work', 'Deep Work', 60, now, now],
+      'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ['preset-deep-work', 'Deep Work', 60, null, now, now],
     ],
     [
-      'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      ['preset-reading', 'Reading', 30, now, now],
+      'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ['preset-reading', 'Reading', 30, null, now, now],
     ],
     ['INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['daily_presets_seeded', 'true']],
   ]);
+}
+
+// Adds reminder time support to preset tables created before daily reminders existed.
+async function ensurePresetReminderColumn(db: DatabaseClient): Promise<void> {
+  const result = await db.execute('PRAGMA table_info(activity_presets)');
+  if (!result.rows.some(row => row.name === 'reminder_time_minutes')) {
+    await db.execute('ALTER TABLE activity_presets ADD COLUMN reminder_time_minutes INTEGER');
+  }
 }
 
 // Creates a migration-local event ID without adding another dependency.

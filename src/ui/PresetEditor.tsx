@@ -5,19 +5,22 @@ import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import type { ActivityPreset } from '../domain/activityTypes';
 import { DEFAULT_TARGET_DURATION_MINUTES } from '../domain/time';
 import { DurationPicker } from './DurationPicker';
+import { ReminderTimePicker } from './ReminderTimePicker';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { colors, radii, spacing } from './theme';
 
 type PresetEditorProps = {
   visible: boolean;
   preset: ActivityPreset | null;
   onClose(): void;
-  onSave(title: string, durationMinutes: number): Promise<void>;
+  onSave(title: string, durationMinutes: number, reminderTimeMinutes: number | null): Promise<void>;
 };
 
 // Renders the shared create/edit form for daily presets.
 export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorProps) {
   const [title, setTitle] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(DEFAULT_TARGET_DURATION_MINUTES);
+  const [reminderTimeMinutes, setReminderTimeMinutes] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -27,6 +30,7 @@ export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorP
 
     setTitle(preset?.title ?? '');
     setDurationMinutes(preset?.durationMinutes ?? DEFAULT_TARGET_DURATION_MINUTES);
+    setReminderTimeMinutes(preset?.reminderTimeMinutes ?? null);
   }, [preset, visible]);
 
   async function handleSave() {
@@ -36,7 +40,7 @@ export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorP
 
     setIsSaving(true);
     try {
-      await onSave(title, durationMinutes);
+      await onSave(title, durationMinutes, reminderTimeMinutes);
     } finally {
       setIsSaving(false);
     }
@@ -44,7 +48,7 @@ export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorP
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.header}>
             <View>
@@ -72,11 +76,12 @@ export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorP
               }
             }}
           />
+          <ReminderTimePicker value={reminderTimeMinutes} onChange={setReminderTimeMinutes} />
           <Pressable accessibilityRole="button" disabled={!title.trim() || isSaving} onPress={handleSave} style={[styles.saveButton, !title.trim() ? styles.disabledButton : null]}>
             <Text style={styles.saveText}>{preset ? 'Save changes' : 'Add preset'}</Text>
           </Pressable>
         </View>
-      </View>
+      </KeyboardAwareScrollView>
     </Modal>
   );
 }

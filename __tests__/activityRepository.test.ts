@@ -119,18 +119,20 @@ describe('activity repository', () => {
 
     expect(seeded.map(preset => preset.title)).toEqual(['Meditation', 'Deep Work', 'Reading']);
 
-    await presets.createPreset('Walk', 45);
+    await presets.createPreset('Walk', 45, 17 * 60);
     const created = (await presets.listPresets()).find(preset => preset.title === 'Walk');
     expect(created?.durationMinutes).toBe(45);
+    expect(created?.reminderTimeMinutes).toBe(17 * 60);
 
     if (!created) {
       throw new Error('Created preset was not returned.');
     }
 
-    await presets.updatePreset(created.id, 'Long Walk', 60);
+    await presets.updatePreset(created.id, 'Long Walk', 60, null);
     expect((await presets.listPresets()).find(preset => preset.id === created.id)).toMatchObject({
       title: 'Long Walk',
       durationMinutes: 60,
+      reminderTimeMinutes: null,
     });
 
     await presets.deletePreset(created.id);

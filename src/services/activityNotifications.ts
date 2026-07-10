@@ -1,18 +1,23 @@
 // Overview: Schedules local target-completion notifications and triggers haptics when they arrive in the foreground.
 
 import { NativeModules } from 'react-native';
-import type { ActivityWithLogs } from '../domain/activityTypes';
+import type { ActivityPreset, ActivityWithLogs } from '../domain/activityTypes';
 import { calculateActiveElapsedMs } from '../domain/time';
+import { isValidReminderTimeMinutes } from '../domain/reminderTime';
 
 type ActivityNotificationManager = {
   requestPermission(): Promise<boolean>;
   scheduleTargetNotification(activityId: string, title: string, delaySeconds: number): Promise<void>;
   schedulePauseReminder(activityId: string, title: string, delaySeconds: number): Promise<void>;
+  scheduleStreakCelebration(days: number): Promise<void>;
+  schedulePresetReminder(presetId: string, title: string, reminderTimeMinutes: number): Promise<void>;
   cancelTargetNotification(activityId: string): void;
   cancelPauseReminder(activityId: string): void;
+  cancelPresetReminder(presetId: string): void;
 };
 
 const PAUSE_REMINDER_DELAY_SECONDS = 30 * 60;
+const STREAK_MILESTONES = [2, 3, 5, 7, 14, 21, 30, 60, 90, 100];
 let permissionPromise: Promise<unknown> | null = null;
 const notificationManager = NativeModules.ActivityNotificationManager as ActivityNotificationManager | undefined;
 
@@ -103,6 +108,57 @@ export async function scheduleActivityPauseReminder(activity: ActivityWithLogs):
 // Cancels a paused-activity reminder after resume, completion, or deletion.
 export function cancelActivityPauseReminder(activityId: string): void {
   notificationManager?.cancelPauseReminder(activityId);
+}
+
+// Schedules a repeating local reminder for an optional Daily preset time.
+export async function schedulePresetReminder(preset: ActivityPreset): Promise<void> {
+  if (!notificationManager) {
+    return;
+  }
+
+  notificationManager.cancelPresetReminder(preset.id);
+  if (!isValidReminderTimeMinutes(preset.reminderTimeMinutes)) {
+    return;
+  }
+
+  try {
+    await ensureNotificationPermission();
+    await notificationManager.schedulePresetReminder(
+      preset.id,
+      `Start ${preset.title} — ${formatTarget(preset.durationMinutes)} focus session.`,
+      preset.reminderTimeMinutes,
+    );
+  } catch (error) {
+    console.warn('Could not schedule preset reminder', error);
+  }
+}
+
+// Cancels a repeating Daily preset reminder.
+export function cancelPresetReminder(presetId: string): void {
+  notificationManager?.cancelPresetReminder(presetId);
+}
+
+// Returns whether a new all-time streak is worth celebrating without creating daily notification noise.
+export function isStreakMilestone(days: number): boolean {
+  return STREAK_MILESTONES.includes(days);
+}
+
+// Shows a short celebration only when the user reaches a meaningful all-time streak milestone.
+export async function scheduleStreakCelebrationNotification(days: number): Promise<void> {
+  if (!isStreakMilestone(days)) {
+    return;
+  }
+
+  try {
+    await ensureNotificationPermission();
+    if (!notificationManager) {
+      return;
+    }
+
+    await notificationManager.scheduleStreakCelebration(days);
+  } catch (error) {
+    console.warn('Could not schedule streak celebration', error);
+  }
 }
 
 // Formats notification copy without coupling this service to UI formatting helpers.

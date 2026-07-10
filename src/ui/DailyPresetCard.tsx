@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Clock3, Pencil, Play, Trash2 } from 'lucide-react-native';
 import type { ActivityPreset } from '../domain/activityTypes';
 import { formatTargetDuration } from '../domain/time';
+import { formatReminderTime } from '../domain/reminderTime';
 import { colors, radii, spacing } from './theme';
 
 type DailyPresetCardProps = {
@@ -25,6 +26,7 @@ export function DailyPresetCard({ preset, onStart, onEdit, onDelete }: DailyPres
         <View style={styles.copy}>
           <Text numberOfLines={1} style={styles.title}>{preset.title}</Text>
           <Text style={styles.duration}>{formatTargetDuration(preset.durationMinutes)} focus session</Text>
+          <Text style={styles.reminder}>{preset.reminderTimeMinutes === null ? 'No reminder set' : `Reminder at ${formatReminderTime(preset.reminderTimeMinutes)}`}</Text>
         </View>
       </View>
       <View style={styles.actions}>
@@ -85,6 +87,11 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 13,
     fontWeight: '700',
+  },
+  reminder: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
   },
   actions: {
     alignItems: 'center',

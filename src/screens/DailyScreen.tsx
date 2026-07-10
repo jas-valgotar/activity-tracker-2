@@ -1,14 +1,15 @@
 // Overview: Shows editable daily activity presets that start normal timed activities.
 
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Plus } from 'lucide-react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { useAppData } from '../data/AppDataProvider';
 import type { ActivityPreset } from '../domain/activityTypes';
 import type { MainTabParamList } from '../navigation/types';
 import { DailyPresetCard } from '../ui/DailyPresetCard';
+import { DailyPresetComposer } from '../ui/DailyPresetComposer';
+import { KeyboardAwareScrollView } from '../ui/KeyboardAwareScrollView';
 import { PresetEditor } from '../ui/PresetEditor';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { colors, radii, spacing } from '../ui/theme';
@@ -31,22 +32,24 @@ export function DailyScreen() {
     }, [loadPresets]),
   );
 
-  function openCreate() {
-    setEditorPreset(null);
-    setIsEditorVisible(true);
-  }
-
   function openEdit(preset: ActivityPreset) {
     setEditorPreset(preset);
     setIsEditorVisible(true);
   }
 
-  async function handleSave(title: string, durationMinutes: number) {
+  async function handleCreate(title: string, durationMinutes: number, reminderTimeMinutes: number | null) {
+    try {
+      await createPreset(title, durationMinutes, reminderTimeMinutes);
+      await loadPresets();
+    } catch (error) {
+      Alert.alert('Could Not Add Daily Activity', error instanceof Error ? error.message : 'Please try again.');
+    }
+  }
+
+  async function handleSave(title: string, durationMinutes: number, reminderTimeMinutes: number | null) {
     try {
       if (editorPreset) {
-        await updatePreset(editorPreset.id, title, durationMinutes);
-      } else {
-        await createPreset(title, durationMinutes);
+        await updatePreset(editorPreset.id, title, durationMinutes, reminderTimeMinutes);
       }
       setIsEditorVisible(false);
       await loadPresets();
@@ -108,16 +111,13 @@ export function DailyScreen() {
   return (
     <View style={styles.container}>
       <ScreenHeader title="Daily" subtitle="Start a familiar session in one tap." showSort={false} />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <DailyPresetComposer onSave={handleCreate} />
         <View style={styles.sectionHeader}>
           <View style={styles.sectionCopy}>
             <Text style={styles.sectionTitle}>Your routines</Text>
-            <Text style={styles.sectionHint}>Small, repeatable starts add up.</Text>
+            <Text style={styles.sectionHint}>Start a reminder-ready activity in one tap.</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Add daily preset" onPress={openCreate} style={styles.addButton}>
-            <Plus color={colors.surface} size={18} strokeWidth={2.8} />
-            <Text style={styles.addText}>Add</Text>
-          </Pressable>
         </View>
         {presets.length > 0 ? presets.map(preset => (
           <DailyPresetCard key={preset.id} onDelete={confirmDelete} onEdit={openEdit} onStart={handleStart} preset={preset} />
@@ -127,7 +127,7 @@ export function DailyScreen() {
             <Text style={styles.emptyHint}>Create a preset for anything you want to return to.</Text>
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <PresetEditor
         onClose={() => setIsEditorVisible(false)}
         onSave={handleSave}
@@ -166,20 +166,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginTop: spacing.xs,
-  },
-  addButton: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryDeep,
-    borderRadius: radii.pill,
-    flexDirection: 'row',
-    gap: spacing.xs,
-    minHeight: 40,
-    paddingHorizontal: spacing.md,
-  },
-  addText: {
-    color: colors.surface,
-    fontSize: 14,
-    fontWeight: '900',
   },
   emptyState: {
     alignItems: 'center',

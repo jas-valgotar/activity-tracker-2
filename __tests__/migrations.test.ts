@@ -60,4 +60,22 @@ describe('database migrations', () => {
     expect(activeRows.rows.map(row => row.id)).toEqual(['newer-active']);
     expect(pausedRows.rows.map(row => row.id)).toEqual(['older-active']);
   });
+
+  it('adds optional reminder times to an existing preset table', async () => {
+    const db = await createSqliteTestClient();
+    await db.execute(`
+      CREATE TABLE activity_presets (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        duration_minutes INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `);
+
+    await runMigrations(db);
+
+    const columns = await db.execute('PRAGMA table_info(activity_presets)');
+    expect(columns.rows.some(row => row.name === 'reminder_time_minutes')).toBe(true);
+  });
 });

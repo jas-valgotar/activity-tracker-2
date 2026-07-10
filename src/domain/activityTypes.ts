@@ -46,6 +46,7 @@ export type ActivityPreset = {
   id: string;
   title: string;
   durationMinutes: number;
+  reminderTimeMinutes: number | null;
   createdAt: number;
   updatedAt: number;
 };

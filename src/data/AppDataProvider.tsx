@@ -11,6 +11,7 @@ import type {
   ProgressReport,
 } from '../domain/activityTypes';
 import { DEFAULT_SORT_MODE } from '../domain/sort';
+import { calculateAllTimeStreak } from '../domain/streak';
 import { createActivityRepository, type ActivityRepository } from './activityRepository';
 import { createActivityPresetRepository, type ActivityPresetRepository } from './activityPresetRepository';
 import { getActivityDatabase } from './database';
@@ -19,8 +20,11 @@ import { createSettingsRepository, type SettingsRepository } from './settingsRep
 import {
   cancelActivityPauseReminder,
   cancelActivityTargetNotification,
+  cancelPresetReminder,
   configureActivityNotifications,
   scheduleActivityPauseReminder,
+  schedulePresetReminder,
+  scheduleStreakCelebrationNotification,
   scheduleActivityTargetNotification,
 } from '../services/activityNotifications';
 
@@ -42,8 +46,8 @@ type AppDataContextValue = {
   pauseCurrentAndCreateActivity(title: string, targetDurationMinutes?: number): Promise<void>;
   pauseCurrentAndResumeActivity(id: string): Promise<void>;
   listPresets(): Promise<ActivityPreset[]>;
-  createPreset(title: string, durationMinutes: number): Promise<void>;
-  updatePreset(id: string, title: string, durationMinutes: number): Promise<void>;
+  createPreset(title: string, durationMinutes: number, reminderTimeMinutes?: number | null): Promise<void>;
+  updatePreset(id: string, title: string, durationMinutes: number, reminderTimeMinutes?: number | null): Promise<void>;
   deletePreset(id: string): Promise<void>;
   getActivityProgressReport(activityId: string, period: ProgressPeriod): Promise<ProgressReport>;
   pauseActivity(id: string): Promise<void>;
@@ -89,6 +93,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       setSortModeState(savedSortMode);
       setIsReady(true);
       configureActivityNotifications();
+
+      const storedPresets = await presets.listPresets();
+      storedPresets.forEach(preset => {
+        schedulePresetReminder(preset).catch(() => undefined);
+      });
 
       const activeActivity = (await activities.listActivities('all', DEFAULT_SORT_MODE)).find(
         activity => activity.status === 'active',
@@ -198,22 +207,32 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     return presets.listPresets();
   }, [getRepositories]);
 
+  // Keeps all optional Daily preset reminders synchronized after preset edits.
+  const syncPresetReminders = useCallback(
+    async (presetList: ActivityPreset[]) => {
+      await Promise.all(presetList.map(preset => schedulePresetReminder(preset)));
+    },
+    [],
+  );
+
   // Creates a reusable daily activity preset.
   const createPreset = useCallback(
-    async (title: string, durationMinutes: number) => {
+    async (title: string, durationMinutes: number, reminderTimeMinutes?: number | null) => {
       const { presets } = getRepositories();
-      await presets.createPreset(title, durationMinutes);
+      await presets.createPreset(title, durationMinutes, reminderTimeMinutes);
+      await syncPresetReminders(await presets.listPresets());
     },
-    [getRepositories],
+    [getRepositories, syncPresetReminders],
   );
 
   // Updates a reusable daily activity preset.
   const updatePreset = useCallback(
-    async (id: string, title: string, durationMinutes: number) => {
+    async (id: string, title: string, durationMinutes: number, reminderTimeMinutes?: number | null) => {
       const { presets } = getRepositories();
-      await presets.updatePreset(id, title, durationMinutes);
+      await presets.updatePreset(id, title, durationMinutes, reminderTimeMinutes);
+      await syncPresetReminders(await presets.listPresets());
     },
-    [getRepositories],
+    [getRepositories, syncPresetReminders],
   );
 
   // Deletes a reusable daily activity preset.
@@ -221,6 +240,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (id: string) => {
       const { presets } = getRepositories();
       await presets.deletePreset(id);
+      cancelPresetReminder(id);
     },
     [getRepositories],
   );
@@ -268,12 +288,19 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const completeActivity = useCallback(
     async (id: string) => {
       const { activities } = getRepositories();
+      const beforeActivities = await activities.listActivities('all', sortModeState);
+      const previousAllTimeStreak = calculateAllTimeStreak(beforeActivities);
       await activities.completeActivity(id);
       cancelActivityTargetNotification(id);
       cancelActivityPauseReminder(id);
+      const afterActivities = await activities.listActivities('all', sortModeState);
+      const allTimeStreak = calculateAllTimeStreak(afterActivities);
+      if (allTimeStreak > previousAllTimeStreak) {
+        scheduleStreakCelebrationNotification(allTimeStreak).catch(() => undefined);
+      }
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories],
+    [bumpActivityRevision, getRepositories, sortModeState],
   );
 
   // Clears any pending delete undo state and timer.
