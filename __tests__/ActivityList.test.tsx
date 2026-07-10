@@ -42,6 +42,7 @@ function createMockAppDataContext() {
     listActivities: jest.fn().mockResolvedValue([]),
     pauseActivity: jest.fn(),
     resumeActivity: jest.fn(),
+    pauseCurrentAndResumeActivity: jest.fn(),
     completeActivity: jest.fn(),
     deleteActivity: jest.fn(),
   };

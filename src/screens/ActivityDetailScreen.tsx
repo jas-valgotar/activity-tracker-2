@@ -25,6 +25,7 @@ export function ActivityDetailScreen() {
     getActivityWithLogs,
     pauseActivity,
     resumeActivity,
+    pauseCurrentAndResumeActivity,
     completeActivity,
     deleteActivity,
     getActivityProgressReport,
@@ -86,6 +87,25 @@ export function ActivityDetailScreen() {
       await loadActivity();
       await loadProgress();
     } catch (error) {
+      if (activity.status === 'paused' && isActiveActivityConflict(error)) {
+        Alert.alert('Activity In Progress', 'Pause the current activity and resume this one?', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Pause & Resume',
+            onPress: async () => {
+              try {
+                await pauseCurrentAndResumeActivity(activity.id);
+                await loadActivity();
+                await loadProgress();
+              } catch (switchError) {
+                Alert.alert('Could Not Switch Activity', getErrorMessage(switchError));
+              }
+            },
+          },
+        ]);
+        return;
+      }
+
       Alert.alert('Could Not Resume Activity', error instanceof Error ? error.message : 'Pause the current activity first.');
     }
   }
@@ -204,6 +224,16 @@ export function ActivityDetailScreen() {
       </View>
     </ScrollView>
   );
+}
+
+// Identifies the single-active-activity guard so detail actions can offer a focus switch.
+function isActiveActivityConflict(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('Only one activity can be active');
+}
+
+// Converts unknown lifecycle errors into concise user-facing copy.
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Please try again.';
 }
 
 const styles = StyleSheet.create({

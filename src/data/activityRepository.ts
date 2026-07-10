@@ -39,6 +39,7 @@ type DbEventRow = {
 export type ActivityRepository = {
   createActivity(title: string, targetDurationMinutes?: number): Promise<ActivityWithLogs>;
   pauseCurrentAndCreateActivity(title: string, targetDurationMinutes?: number): Promise<ActivityStartResult>;
+  pauseCurrentAndResumeActivity(id: string): Promise<ActivityStartResult>;
   listActivities(filter: ActivityFilter, sortMode: ActivitySortMode): Promise<ActivityWithLogs[]>;
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
   getActivityProgressReport(id: string, period: ProgressPeriod, now?: number): Promise<ProgressReport>;
@@ -150,6 +151,47 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
         [
           'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
           [createId(), id, 'started', now],
+        ],
+      );
+      await db.executeBatch(commands);
+
+      const activity = await this.getActivityWithLogs(id);
+      if (!activity) {
+        throw new Error('Activity could not be loaded after switching focus.');
+      }
+
+      return { activity, pausedActivityId };
+    },
+
+    // Pauses the current active activity and resumes the requested paused activity atomically.
+    async pauseCurrentAndResumeActivity(id) {
+      const target = await getActivityRow(id);
+      if (!target || target.deleted_at !== null || target.status !== 'paused') {
+        throw new Error('Only paused activities can be resumed.');
+      }
+
+      const activeResult = await db.execute(
+        "SELECT id FROM activities WHERE status = 'active' AND deleted_at IS NULL LIMIT 1",
+      );
+      const pausedActivityId = (activeResult.rows[0] as { id?: string } | undefined)?.id ?? null;
+      const now = Date.now();
+      const commands: Array<[string, Array<string | number | null>]> = [];
+
+      if (pausedActivityId) {
+        commands.push(
+          ['UPDATE activities SET status = ?, last_accessed_at = ? WHERE id = ?', ['paused', now, pausedActivityId]],
+          [
+            'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
+            [createId(), pausedActivityId, 'paused', now],
+          ],
+        );
+      }
+
+      commands.push(
+        ['UPDATE activities SET status = ?, last_accessed_at = ? WHERE id = ?', ['active', now, id]],
+        [
+          'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
+          [createId(), id, 'resumed', now],
         ],
       );
       await db.executeBatch(commands);

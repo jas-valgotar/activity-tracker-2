@@ -83,6 +83,24 @@ describe('activity repository', () => {
     await expect(activities.resumeActivity(first.id)).rejects.toThrow('Only one activity can be active at a time.');
   });
 
+  it('pauses the current activity and resumes a selected paused activity as one switch', async () => {
+    const { activities } = await createRepositories();
+    const selected = await activities.createActivity('Selected focus');
+    await activities.pauseActivity(selected.id);
+    const current = await activities.createActivity('Current focus');
+
+    const result = await activities.pauseCurrentAndResumeActivity(selected.id);
+    const selectedAfter = await activities.getActivityWithLogs(selected.id);
+    const currentAfter = await activities.getActivityWithLogs(current.id);
+
+    expect(result.activity.id).toBe(selected.id);
+    expect(result.activity.status).toBe('active');
+    expect(result.pausedActivityId).toBe(current.id);
+    expect(selectedAfter?.events.map(event => event.type)).toEqual(['started', 'paused', 'resumed']);
+    expect(currentAfter?.status).toBe('paused');
+    expect(currentAfter?.events.at(-1)?.type).toBe('paused');
+  });
+
   it('restores a deleted active activity as paused when another activity has started', async () => {
     const { activities } = await createRepositories();
     const deleted = await activities.createActivity('Deleted focus');

@@ -38,6 +38,7 @@ type AppDataContextValue = {
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
   createActivity(title: string, targetDurationMinutes?: number): Promise<void>;
   pauseCurrentAndCreateActivity(title: string, targetDurationMinutes?: number): Promise<void>;
+  pauseCurrentAndResumeActivity(id: string): Promise<void>;
   listPresets(): Promise<ActivityPreset[]>;
   createPreset(title: string, durationMinutes: number): Promise<void>;
   updatePreset(id: string, title: string, durationMinutes: number): Promise<void>;
@@ -165,6 +166,20 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     async (title: string, targetDurationMinutes?: number) => {
       const { activities } = getRepositories();
       const result = await activities.pauseCurrentAndCreateActivity(title, targetDurationMinutes);
+      if (result.pausedActivityId) {
+        cancelActivityTargetNotification(result.pausedActivityId);
+      }
+      scheduleActivityTargetNotification(result.activity).catch(() => undefined);
+      bumpActivityRevision();
+    },
+    [bumpActivityRevision, getRepositories],
+  );
+
+  // Pauses the current focus and resumes a selected paused activity after the user confirms a switch.
+  const pauseCurrentAndResumeActivity = useCallback(
+    async (id: string) => {
+      const { activities } = getRepositories();
+      const result = await activities.pauseCurrentAndResumeActivity(id);
       if (result.pausedActivityId) {
         cancelActivityTargetNotification(result.pausedActivityId);
       }
@@ -309,6 +324,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       getActivityWithLogs,
       createActivity,
       pauseCurrentAndCreateActivity,
+      pauseCurrentAndResumeActivity,
       listPresets,
       createPreset,
       updatePreset,
@@ -331,6 +347,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       getActivityWithLogs,
       createActivity,
       pauseCurrentAndCreateActivity,
+      pauseCurrentAndResumeActivity,
       listPresets,
       createPreset,
       updatePreset,
