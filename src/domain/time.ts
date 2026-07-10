@@ -16,7 +16,6 @@ const DAY_MS = 24 * HOUR_MS;
 export const DEFAULT_TARGET_DURATION_MINUTES = 60;
 export const MIN_TARGET_DURATION_MINUTES = 15;
 export const MAX_TARGET_DURATION_MINUTES = 8 * 60;
-export const TARGET_DURATION_STEP_MINUTES = 15;
 export const TIMER_FRAME_SEGMENTS = 30;
 
 type ElapsedInput = {
@@ -36,13 +35,12 @@ export type ActivityInterval = {
   endAt: number;
 };
 
-// Returns whether a target duration is one of the supported 15-minute increments.
+// Returns whether a target duration is a supported whole-minute value in the allowed range.
 export function isValidTargetDurationMinutes(value: number): boolean {
   return (
-    Number.isFinite(value) &&
+    Number.isInteger(value) &&
     value >= MIN_TARGET_DURATION_MINUTES &&
-    value <= MAX_TARGET_DURATION_MINUTES &&
-    value % TARGET_DURATION_STEP_MINUTES === 0
+    value <= MAX_TARGET_DURATION_MINUTES
   );
 }
 

@@ -1,14 +1,13 @@
-// Overview: Provides low-friction 15-minute duration choices with an optional custom stepper.
+// Overview: Provides low-friction quick duration choices with an arbitrary whole-minute custom input.
 
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Check, Minus, Plus } from 'lucide-react-native';
 import {
   DEFAULT_TARGET_DURATION_MINUTES,
   formatTargetDuration,
   MAX_TARGET_DURATION_MINUTES,
   MIN_TARGET_DURATION_MINUTES,
-  TARGET_DURATION_STEP_MINUTES,
 } from '../domain/time';
 import { colors, radii, spacing } from './theme';
 
@@ -23,26 +22,43 @@ const QUICK_DURATIONS = [15, 30, 45, 60, 90, 120];
 // Renders quick duration chips and a modal stepper for less common targets.
 export function DurationPicker({ value, onChange, label = 'Duration' }: DurationPickerProps) {
   const [isCustomOpen, setIsCustomOpen] = useState(false);
-  const [customValue, setCustomValue] = useState<number>(value ?? DEFAULT_TARGET_DURATION_MINUTES);
+  const [customText, setCustomText] = useState(String(value ?? DEFAULT_TARGET_DURATION_MINUTES));
+
+  const isCustomSelected = value !== null && !QUICK_DURATIONS.includes(value);
+
+  function getCustomValue(): number | null {
+    if (!/^\d+$/.test(customText)) {
+      return null;
+    }
+
+    const parsed = Number(customText);
+    return Number.isInteger(parsed) && parsed >= MIN_TARGET_DURATION_MINUTES && parsed <= MAX_TARGET_DURATION_MINUTES
+      ? parsed
+      : null;
+  }
 
   function openCustomPicker() {
-    setCustomValue(value ?? DEFAULT_TARGET_DURATION_MINUTES);
+    setCustomText(String(value ?? DEFAULT_TARGET_DURATION_MINUTES));
     setIsCustomOpen(true);
   }
 
   function changeCustomValue(delta: number) {
-    setCustomValue(current =>
-      Math.min(
-        MAX_TARGET_DURATION_MINUTES,
-        Math.max(MIN_TARGET_DURATION_MINUTES, current + delta),
-      ),
-    );
+    const current = getCustomValue() ?? DEFAULT_TARGET_DURATION_MINUTES;
+    const next = Math.min(MAX_TARGET_DURATION_MINUTES, Math.max(MIN_TARGET_DURATION_MINUTES, current + delta));
+    setCustomText(String(next));
   }
 
   function applyCustomValue() {
-    onChange(customValue);
+    const nextValue = getCustomValue();
+    if (nextValue === null) {
+      return;
+    }
+
+    onChange(nextValue);
     setIsCustomOpen(false);
   }
+
+  const customValue = getCustomValue();
 
   return (
     <View>
@@ -70,12 +86,21 @@ export function DurationPicker({ value, onChange, label = 'Duration' }: Duration
             </Pressable>
           );
         })}
-        <Pressable accessibilityRole="button" onPress={openCustomPicker} style={[styles.option, styles.customOption]}>
-          <Text style={styles.customOptionText}>Custom</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Choose custom duration"
+          accessibilityState={{ selected: isCustomSelected }}
+          onPress={openCustomPicker}
+          style={[styles.option, styles.customOption, isCustomSelected ? styles.selectedCustomOption : null]}
+        >
+          {isCustomSelected ? <Check color={colors.surface} size={14} strokeWidth={3} /> : null}
+          <Text style={[styles.customOptionText, isCustomSelected ? styles.selectedCustomOptionText : null]}>
+            {isCustomSelected ? formatTargetDuration(value) : 'Custom'}
+          </Text>
         </Pressable>
       </ScrollView>
       <Modal animationType="slide" transparent visible={isCustomOpen} onRequestClose={() => setIsCustomOpen(false)}>
-        <View style={styles.modalBackdrop}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <View>
@@ -86,34 +111,50 @@ export function DurationPicker({ value, onChange, label = 'Duration' }: Duration
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
             </View>
-            <Text style={styles.customValue}>{formatTargetDuration(customValue)}</Text>
-            <Text style={styles.customHint}>Choose in 15-minute increments, up to 8 hours.</Text>
+            <Text style={styles.customHint}>Enter any whole number of minutes, from 15 minutes to 8 hours.</Text>
             <View style={styles.stepper}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Decrease duration"
-                disabled={customValue <= MIN_TARGET_DURATION_MINUTES}
-                onPress={() => changeCustomValue(-TARGET_DURATION_STEP_MINUTES)}
-                style={[styles.stepButton, customValue <= MIN_TARGET_DURATION_MINUTES ? styles.disabledStepButton : null]}
+                disabled={customValue !== null && customValue <= MIN_TARGET_DURATION_MINUTES}
+                onPress={() => changeCustomValue(-1)}
+                style={[styles.stepButton, customValue !== null && customValue <= MIN_TARGET_DURATION_MINUTES ? styles.disabledStepButton : null]}
               >
                 <Minus color={colors.primary} size={22} />
               </Pressable>
-              <Text style={styles.stepValue}>{customValue} min</Text>
+              <View style={styles.inputGroup}>
+                <TextInput
+                  accessibilityLabel="Custom duration in minutes"
+                  keyboardType="number-pad"
+                  maxLength={3}
+                  onChangeText={text => setCustomText(text.replace(/[^0-9]/g, ''))}
+                  selectTextOnFocus
+                  style={styles.stepInput}
+                  value={customText}
+                />
+                <Text style={styles.stepUnit}>min</Text>
+              </View>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Increase duration"
-                disabled={customValue >= MAX_TARGET_DURATION_MINUTES}
-                onPress={() => changeCustomValue(TARGET_DURATION_STEP_MINUTES)}
-                style={[styles.stepButton, customValue >= MAX_TARGET_DURATION_MINUTES ? styles.disabledStepButton : null]}
+                disabled={customValue !== null && customValue >= MAX_TARGET_DURATION_MINUTES}
+                onPress={() => changeCustomValue(1)}
+                style={[styles.stepButton, customValue !== null && customValue >= MAX_TARGET_DURATION_MINUTES ? styles.disabledStepButton : null]}
               >
                 <Plus color={colors.primary} size={22} />
               </Pressable>
             </View>
-            <Pressable accessibilityRole="button" onPress={applyCustomValue} style={styles.doneButton}>
-              <Text style={styles.doneText}>Use {formatTargetDuration(customValue)}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Use custom duration"
+              disabled={customValue === null}
+              onPress={applyCustomValue}
+              style={[styles.doneButton, customValue === null ? styles.disabledDoneButton : null]}
+            >
+              <Text style={styles.doneText}>{customValue === null ? 'Enter a valid duration' : `Use ${formatTargetDuration(customValue)}`}</Text>
             </Pressable>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -169,10 +210,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
     borderColor: colors.primarySoft,
   },
+  selectedCustomOption: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
   customOptionText: {
     color: colors.primaryDeep,
     fontSize: 12,
     fontWeight: '900',
+  },
+  selectedCustomOptionText: {
+    color: colors.surface,
   },
   modalBackdrop: {
     backgroundColor: 'rgba(0, 0, 0, 0.28)',
@@ -210,18 +258,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
   },
-  customValue: {
-    color: colors.text,
-    fontSize: 52,
-    fontWeight: '900',
-    marginTop: spacing.xxl,
-    textAlign: 'center',
-  },
   customHint: {
     color: colors.muted,
     fontSize: 13,
     fontWeight: '600',
-    marginTop: spacing.xs,
+    marginTop: spacing.xxl,
     textAlign: 'center',
   },
   stepper: {
@@ -241,10 +282,23 @@ const styles = StyleSheet.create({
   disabledStepButton: {
     opacity: 0.35,
   },
-  stepValue: {
+  inputGroup: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  stepInput: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 34,
     fontWeight: '900',
+    minWidth: 104,
+    padding: 0,
+    textAlign: 'right',
+  },
+  stepUnit: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '800',
   },
   doneButton: {
     alignItems: 'center',
@@ -253,6 +307,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: spacing.xl,
     minHeight: 52,
+  },
+  disabledDoneButton: {
+    opacity: 0.45,
   },
   doneText: {
     color: colors.surface,

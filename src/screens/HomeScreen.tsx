@@ -1,7 +1,7 @@
-// Overview: Implements the default active-activity screen with list and bottom input bar.
+// Overview: Implements the default active-activity screen with keyboard-aware list and bottom input bar.
 
 import React, { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useAppData } from '../data/AppDataProvider';
 import { ActivityInputBar } from '../ui/ActivityInputBar';
 import { ActivityList } from '../ui/ActivityList';
@@ -21,17 +21,26 @@ export function HomeScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <ScreenHeader title="Focus" subtitle="Keep the important things moving." />
-      <ActivityList filter="home" emptyText="No Activity Started" />
-      <ActivityInputBar onAdd={handleAddActivity} />
-    </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+      style={styles.keyboardAvoidingView}
+    >
+      <View style={styles.container}>
+        <ScreenHeader title="Focus" subtitle="Keep the important things moving." />
+        <ActivityList filter="home" emptyText="No Activity Started" />
+        <ActivityInputBar onAdd={handleAddActivity} />
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.background,
+    flex: 1,
+  },
+  keyboardAvoidingView: {
     flex: 1,
   },
 });

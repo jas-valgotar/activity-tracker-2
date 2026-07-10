@@ -6,7 +6,6 @@ import {
   isValidTargetDurationMinutes,
   MAX_TARGET_DURATION_MINUTES,
   MIN_TARGET_DURATION_MINUTES,
-  TARGET_DURATION_STEP_MINUTES,
 } from '../domain/time';
 
 type DbPresetRow = {
@@ -34,7 +33,7 @@ export function createActivityPresetRepository(db: DatabaseClient): ActivityPres
 
     if (!isValidTargetDurationMinutes(durationMinutes)) {
       throw new Error(
-        `Preset duration must be between ${MIN_TARGET_DURATION_MINUTES} and ${MAX_TARGET_DURATION_MINUTES} minutes in ${TARGET_DURATION_STEP_MINUTES}-minute increments.`,
+        `Preset duration must be a whole number of minutes between ${MIN_TARGET_DURATION_MINUTES} and ${MAX_TARGET_DURATION_MINUTES} minutes.`,
       );
     }
 

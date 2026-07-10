@@ -112,7 +112,7 @@ export function ActivityRow({
           <Text numberOfLines={2} style={styles.title}>
             {activity.title}
           </Text>
-          <Text style={styles.meta}>
+          <Text allowFontScaling={false} ellipsizeMode="tail" numberOfLines={1} style={styles.meta}>
             {formatDuration(elapsedMs)} elapsed · {formatTargetDuration(activity.targetDurationMinutes)} goal
           </Text>
         </View>

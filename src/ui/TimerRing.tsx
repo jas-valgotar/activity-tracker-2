@@ -1,9 +1,9 @@
-// Overview: Renders the compact elapsed-time label inside a spiky rectangular progress frame.
+// Overview: Renders a curvy, softly shaded hourglass timer with proportional sand and a gentle falling-grain animation.
 
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import Svg, { Line } from 'react-native-svg';
-import { formatDuration, getHighlightedSpikeCount } from '../domain/time';
+import Svg, { Path } from 'react-native-svg';
+import { formatDuration } from '../domain/time';
 import { colors } from './theme';
 
 type TimerRingProps = {
@@ -16,59 +16,85 @@ type TimerRingProps = {
 };
 
 const WIDTH = 92;
-const HEIGHT = 54;
-const LABEL_WIDTH = 76;
-const LABEL_HEIGHT = 38;
-const LABEL_LEFT = 8;
-const LABEL_TOP = 8;
-const TOP_BOTTOM_SPIKES = 10;
-const SIDE_SPIKES = 5;
-const SPIKES = 2 * (TOP_BOTTOM_SPIKES + SIDE_SPIKES);
-const STROKE_WIDTH = 8;
-const AnimatedLine = Animated.createAnimatedComponent(Line);
+const HEIGHT = 72;
+const GLASS_WIDTH = 42;
+const GLASS_LEFT = (WIDTH - GLASS_WIDTH) / 2;
+const GLASS_RIGHT = GLASS_LEFT + GLASS_WIDTH;
+const GLASS_CENTER = WIDTH / 2;
+const GLASS_TOP = 5;
+const GLASS_NECK = 29;
+const GLASS_BOTTOM = 50;
+const FRAME_STROKE_WIDTH = 3;
+const NECK_WIDTH = 4;
+const LABEL_HEIGHT = 20;
 
-type SpikeLine = {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-};
-
-// Places each spike as one short segment of the rectangular label border.
-function getSpikeLine(index: number): SpikeLine {
-  if (index < TOP_BOTTOM_SPIKES) {
-    const slotWidth = LABEL_WIDTH / TOP_BOTTOM_SPIKES;
-    const x1 = LABEL_LEFT + index * slotWidth + STROKE_WIDTH / 2;
-    const x2 = LABEL_LEFT + (index + 1) * slotWidth - STROKE_WIDTH / 2;
-    return { x1, y1: LABEL_TOP, x2, y2: LABEL_TOP };
-  }
-
-  const rightIndex = index - TOP_BOTTOM_SPIKES;
-
-  if (rightIndex < SIDE_SPIKES) {
-    const slotHeight = LABEL_HEIGHT / SIDE_SPIKES;
-    const y1 = LABEL_TOP + rightIndex * slotHeight + STROKE_WIDTH / 2;
-    const y2 = LABEL_TOP + (rightIndex + 1) * slotHeight - STROKE_WIDTH / 2;
-    return { x1: LABEL_LEFT + LABEL_WIDTH, y1, x2: LABEL_LEFT + LABEL_WIDTH, y2 };
-  }
-
-  const bottomIndex = rightIndex - SIDE_SPIKES;
-
-  if (bottomIndex < TOP_BOTTOM_SPIKES) {
-    const slotWidth = LABEL_WIDTH / TOP_BOTTOM_SPIKES;
-    const x1 = LABEL_LEFT + LABEL_WIDTH - bottomIndex * slotWidth - STROKE_WIDTH / 2;
-    const x2 = LABEL_LEFT + LABEL_WIDTH - (bottomIndex + 1) * slotWidth + STROKE_WIDTH / 2;
-    return { x1, y1: LABEL_TOP + LABEL_HEIGHT, x2, y2: LABEL_TOP + LABEL_HEIGHT };
-  }
-
-  const leftIndex = bottomIndex - TOP_BOTTOM_SPIKES;
-  const slotHeight = LABEL_HEIGHT / SIDE_SPIKES;
-  const y1 = LABEL_TOP + LABEL_HEIGHT - leftIndex * slotHeight - STROKE_WIDTH / 2;
-  const y2 = LABEL_TOP + LABEL_HEIGHT - (leftIndex + 1) * slotHeight + STROKE_WIDTH / 2;
-  return { x1: LABEL_LEFT, y1, x2: LABEL_LEFT, y2 };
+// Defines the curved silhouette used for the glass body and its 3D-like shading.
+function getGlassShellPath(): string {
+  return [
+    `M ${GLASS_LEFT} ${GLASS_TOP}`,
+    `L ${GLASS_RIGHT} ${GLASS_TOP}`,
+    `C ${GLASS_RIGHT - 4} ${GLASS_TOP + 8}, ${GLASS_CENTER + 9} ${GLASS_NECK - 7}, ${GLASS_CENTER} ${GLASS_NECK}`,
+    `C ${GLASS_CENTER + 9} ${GLASS_NECK + 7}, ${GLASS_RIGHT - 4} ${GLASS_BOTTOM - 8}, ${GLASS_RIGHT} ${GLASS_BOTTOM}`,
+    `L ${GLASS_LEFT} ${GLASS_BOTTOM}`,
+    `C ${GLASS_LEFT + 4} ${GLASS_BOTTOM - 8}, ${GLASS_CENTER - 9} ${GLASS_NECK + 7}, ${GLASS_CENTER} ${GLASS_NECK}`,
+    `C ${GLASS_CENTER - 9} ${GLASS_NECK - 7}, ${GLASS_LEFT + 4} ${GLASS_TOP + 8}, ${GLASS_LEFT} ${GLASS_TOP}`,
+    'Z',
+  ].join(' ');
 }
 
-// Draws a fixed-size 30-segment spiky rectangle that fills against the activity target.
+// Adds a narrow curved reflection so the glass reads as dimensional instead of flat.
+function getGlassHighlightPath(): string {
+  return [
+    `M ${GLASS_LEFT + 6} ${GLASS_TOP + 5}`,
+    `C ${GLASS_LEFT + 10} ${GLASS_TOP + 12}, ${GLASS_CENTER - 10} ${GLASS_NECK - 7}, ${GLASS_CENTER - 4} ${GLASS_NECK}`,
+    `C ${GLASS_CENTER - 10} ${GLASS_NECK + 7}, ${GLASS_LEFT + 10} ${GLASS_BOTTOM - 12}, ${GLASS_LEFT + 6} ${GLASS_BOTTOM - 5}`,
+  ].join(' ');
+}
+
+// Restricts the timer progress to the visible hourglass range.
+function getProgress(elapsedMs: number, targetDurationMinutes: number): number {
+  const targetMs = Math.max(targetDurationMinutes, 1) * 60_000;
+  return Math.min(Math.max(elapsedMs / targetMs, 0), 1);
+}
+
+// Builds the upper sand chamber, which empties toward the hourglass neck.
+function getTopSandPath(progress: number): string {
+  const chamberHeight = GLASS_NECK - GLASS_TOP;
+  const surfaceY = GLASS_TOP + progress * (chamberHeight - 4);
+  const surfaceWidth = Math.max(
+    NECK_WIDTH,
+    GLASS_WIDTH - ((surfaceY - GLASS_TOP) / chamberHeight) * (GLASS_WIDTH - NECK_WIDTH),
+  );
+
+  return [
+    `M ${GLASS_CENTER - NECK_WIDTH / 2} ${GLASS_NECK}`,
+    `L ${GLASS_CENTER + NECK_WIDTH / 2} ${GLASS_NECK}`,
+    `L ${GLASS_CENTER + surfaceWidth / 2} ${surfaceY}`,
+    `L ${GLASS_CENTER - surfaceWidth / 2} ${surfaceY}`,
+    'Z',
+  ].join(' ');
+}
+
+// Builds the lower sand chamber, which fills upward from the base.
+function getBottomSandPath(progress: number): string {
+  const chamberHeight = GLASS_BOTTOM - GLASS_NECK;
+  const depth = 3 + progress * (chamberHeight - 3);
+  const surfaceY = GLASS_BOTTOM - depth;
+  const surfaceWidth = Math.max(
+    NECK_WIDTH,
+    NECK_WIDTH + ((GLASS_BOTTOM - surfaceY) / chamberHeight) * (GLASS_WIDTH - NECK_WIDTH),
+  );
+
+  return [
+    `M ${GLASS_LEFT} ${GLASS_BOTTOM}`,
+    `L ${GLASS_RIGHT} ${GLASS_BOTTOM}`,
+    `L ${GLASS_CENTER + surfaceWidth / 2} ${surfaceY}`,
+    `L ${GLASS_CENTER - surfaceWidth / 2} ${surfaceY}`,
+    'Z',
+  ].join(' ');
+}
+
+// Draws an hourglass that settles into a full lower chamber at the target boundary while keeping elapsed-time semantics.
 export function TimerRing({
   accentColor = colors.primary,
   labelBackgroundColor = colors.surface,
@@ -78,89 +104,120 @@ export function TimerRing({
   blinkNextSpike = false,
 }: TimerRingProps) {
   const elapsedLabel = formatDuration(elapsedMs);
-  const highlightedSpikes = getHighlightedSpikeCount({
-    elapsedMs,
-    targetDurationMinutes,
-    showFullRingAtBoundary: frozen,
-  });
-  const nextSpikeIndex = blinkNextSpike && !frozen ? highlightedSpikes : null;
-  const pulseOpacity = useRef(new Animated.Value(1)).current;
+  const progress = getProgress(elapsedMs, targetDurationMinutes);
+  const isAtEnd = progress >= 1;
+  const sandColor = frozen ? colors.complete : accentColor;
+  const frameColor = colors.muted;
+  const sandFlow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (nextSpikeIndex === null) {
-      pulseOpacity.stopAnimation();
-      pulseOpacity.setValue(1);
+    if (!blinkNextSpike || frozen) {
+      sandFlow.stopAnimation();
+      sandFlow.setValue(0);
       return;
     }
 
     const animation = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseOpacity, {
-          toValue: 0.35,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(pulseOpacity, {
+        Animated.timing(sandFlow, {
           toValue: 1,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
+          duration: 1_100,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sandFlow, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
         }),
       ]),
     );
 
-    pulseOpacity.setValue(1);
     animation.start();
 
     return () => animation.stop();
-  }, [nextSpikeIndex, pulseOpacity]);
+  }, [blinkNextSpike, frozen, sandFlow]);
+
+  const fallingGrainOffset = sandFlow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 14],
+  });
+  const fallingGrainOpacity = sandFlow.interpolate({
+    inputRange: [0, 0.15, 0.8, 1],
+    outputRange: [0, 1, 1, 0],
+  });
 
   return (
-    <View style={styles.container} accessibilityLabel={`${elapsedLabel} elapsed`}>
-      <Svg width={WIDTH} height={HEIGHT} style={styles.spikes}>
-        {Array.from({ length: SPIKES }).map((_, index) => {
-          const line = getSpikeLine(index);
-          let stroke = colors.border;
-          let opacity = 1;
-
-          if (index < highlightedSpikes) {
-            stroke = frozen ? colors.complete : accentColor;
-          } else if (index === nextSpikeIndex) {
-            stroke = accentColor;
-          }
-
-          return index === nextSpikeIndex ? <AnimatedLine
-              key={index}
-              opacity={pulseOpacity}
-              stroke={stroke}
-              strokeLinecap="round"
-              strokeWidth={STROKE_WIDTH}
-              x1={line.x1}
-              x2={line.x2}
-              y1={line.y1}
-              y2={line.y2}
-            /> : <Line
-              key={index}
-              opacity={opacity}
-              stroke={stroke}
-              strokeLinecap="round"
-              strokeWidth={STROKE_WIDTH}
-              x1={line.x1}
-              x2={line.x2}
-              y1={line.y1}
-              y2={line.y2}
-            />;
-        })}
+    <View accessibilityLabel={`${elapsedLabel} elapsed`} style={styles.container}>
+      <Svg height={HEIGHT - LABEL_HEIGHT} width={WIDTH}>
+        <Path
+          d={getGlassShellPath()}
+          fill={colors.surface}
+          fillOpacity={0.22}
+          stroke={colors.border}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={FRAME_STROKE_WIDTH + 2}
+        />
+        <Path
+          d={getGlassShellPath()}
+          fill="none"
+          stroke={frameColor}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeOpacity={0.9}
+          strokeWidth={FRAME_STROKE_WIDTH}
+        />
+        <Path
+          d={getGlassHighlightPath()}
+          fill="none"
+          stroke={colors.surface}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeOpacity={0.62}
+          strokeWidth={1.3}
+        />
+        {!isAtEnd ? (
+          <Path
+            d={getTopSandPath(progress)}
+            fill={sandColor}
+            fillOpacity={0.92}
+            stroke={colors.text}
+            strokeOpacity={0.12}
+            strokeWidth={0.8}
+          />
+        ) : null}
+        <Path
+          d={getBottomSandPath(progress)}
+          fill={sandColor}
+          fillOpacity={0.92}
+          stroke={colors.text}
+          strokeOpacity={0.12}
+          strokeWidth={0.8}
+        />
       </Svg>
-      <View
-        style={[
-          styles.labelContainer,
-          frozen ? styles.completedContainer : styles.activeContainer,
-          { backgroundColor: labelBackgroundColor },
-        ]}
-      >
-        <Text adjustsFontSizeToFit minimumFontScale={0.75} numberOfLines={1} style={styles.label}>
+      {blinkNextSpike && !frozen && !isAtEnd ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.fallingGrain,
+            {
+              backgroundColor: sandColor,
+              opacity: fallingGrainOpacity,
+              transform: [{ translateY: fallingGrainOffset }],
+            },
+          ]}
+        />
+      ) : null}
+      <View style={[styles.labelContainer, { backgroundColor: labelBackgroundColor }]}>
+        <Text
+          adjustsFontSizeToFit
+          allowFontScaling={false}
+          ellipsizeMode="clip"
+          minimumFontScale={0.6}
+          numberOfLines={1}
+          style={styles.label}
+        >
           {elapsedLabel}
         </Text>
       </View>
@@ -172,32 +229,32 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     height: HEIGHT,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    position: 'relative',
     width: WIDTH,
+  },
+  fallingGrain: {
+    borderRadius: 3,
+    height: 4.5,
+    left: GLASS_CENTER - 2.25,
+    position: 'absolute',
+    top: GLASS_NECK - 9,
+    width: 4.5,
   },
   labelContainer: {
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 7,
     height: LABEL_HEIGHT,
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    position: 'absolute',
-    width: LABEL_WIDTH,
-  },
-  activeContainer: {
-    backgroundColor: colors.surface,
-  },
-  completedContainer: {
-    backgroundColor: colors.surface,
+    paddingHorizontal: 4,
+    width: WIDTH,
   },
   label: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     includeFontPadding: false,
+    maxWidth: WIDTH - 8,
     textAlign: 'center',
-  },
-  spikes: {
-    position: 'absolute',
   },
 });

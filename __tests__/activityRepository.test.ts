@@ -42,10 +42,10 @@ describe('activity repository', () => {
 
   it('persists a custom activity target duration', async () => {
     const { activities } = await createRepositories();
-    const created = await activities.createActivity('Meditation', 30);
+    const created = await activities.createActivity('Meditation', 37);
 
-    expect(created.targetDurationMinutes).toBe(30);
-    expect((await activities.getActivityWithLogs(created.id))?.targetDurationMinutes).toBe(30);
+    expect(created.targetDurationMinutes).toBe(37);
+    expect((await activities.getActivityWithLogs(created.id))?.targetDurationMinutes).toBe(37);
   });
 
   it('allows only one active activity at a time', async () => {

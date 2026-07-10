@@ -153,7 +153,9 @@ export function ActivityDetailScreen() {
               {activity.status === 'active' ? 'IN FOCUS' : activity.status.toUpperCase()}
             </Text>
           </View>
-          <Text style={styles.elapsed}>{formatDurationWithSeconds(elapsedMs)}</Text>
+          <Text allowFontScaling={false} ellipsizeMode="tail" numberOfLines={1} style={styles.elapsed}>
+            {formatDurationWithSeconds(elapsedMs)}
+          </Text>
           <Text style={styles.target}>Target {formatTargetDuration(activity.targetDurationMinutes)}</Text>
         </View>
         <TimerRing
