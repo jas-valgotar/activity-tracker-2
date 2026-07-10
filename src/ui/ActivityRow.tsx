@@ -8,9 +8,11 @@ import type { ActivityWithLogs } from '../domain/activityTypes';
 import { calculateActiveElapsedMs, formatDuration, formatTargetDuration } from '../domain/time';
 import { colors, radii, spacing } from './theme';
 import { TimerRing } from './TimerRing';
+import { getActivityPalette } from './activityPalette';
 
 type ActivityRowProps = {
   activity: ActivityWithLogs;
+  colorIndex: number;
   now: number;
   onPress(activity: ActivityWithLogs): void;
   onPause(activity: ActivityWithLogs): void;
@@ -22,6 +24,7 @@ type ActivityRowProps = {
 // Renders an activity row with tap navigation and right-side swipe actions.
 export function ActivityRow({
   activity,
+  colorIndex,
   now,
   onPress,
   onPause,
@@ -29,6 +32,7 @@ export function ActivityRow({
   onComplete,
   onDelete,
 }: ActivityRowProps) {
+  const palette = getActivityPalette(colorIndex);
   const elapsedMs = calculateActiveElapsedMs({
     events: activity.events,
     status: activity.status,
@@ -78,11 +82,31 @@ export function ActivityRow({
 
   return (
     <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
-      <Pressable accessibilityRole="button" onPress={() => onPress(activity)} style={styles.row}>
-        <View style={[styles.statusDot, activity.status === 'completed' ? styles.completedDot : null, activity.status === 'paused' ? styles.pausedDot : null]} />
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onPress(activity)}
+        style={[styles.row, { backgroundColor: palette.background, borderColor: palette.border }]}
+      >
+        <View
+          style={[
+            styles.statusDot,
+            { backgroundColor: palette.accent },
+            activity.status === 'completed' ? styles.completedDot : null,
+            activity.status === 'paused' ? styles.pausedDot : null,
+          ]}
+        />
         <View style={styles.copy}>
           <View style={styles.titleLine}>
-            <Text style={styles.statusLabel}>{activity.status === 'active' ? 'IN FOCUS' : activity.status.toUpperCase()}</Text>
+            <Text
+              style={[
+                styles.statusLabel,
+                { color: palette.accent },
+                activity.status === 'completed' ? styles.completedLabel : null,
+                activity.status === 'paused' ? styles.pausedLabel : null,
+              ]}
+            >
+              {activity.status === 'active' ? 'IN FOCUS' : activity.status.toUpperCase()}
+            </Text>
             <ChevronRight color={colors.border} size={18} />
           </View>
           <Text numberOfLines={2} style={styles.title}>
@@ -94,6 +118,8 @@ export function ActivityRow({
         </View>
         <TimerRing
           elapsedMs={elapsedMs}
+          accentColor={palette.accent}
+          labelBackgroundColor={palette.background}
           targetDurationMinutes={activity.targetDurationMinutes}
           blinkNextSpike={activity.status === 'active'}
           frozen={isFrozen}
@@ -169,6 +195,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 1,
+  },
+  pausedLabel: {
+    color: colors.warning,
+  },
+  completedLabel: {
+    color: colors.complete,
   },
   titleLine: {
     alignItems: 'center',

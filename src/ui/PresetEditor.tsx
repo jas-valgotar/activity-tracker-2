@@ -64,7 +64,14 @@ export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorP
             style={styles.input}
             value={title}
           />
-          <DurationPicker value={durationMinutes} onChange={setDurationMinutes} />
+          <DurationPicker
+            value={durationMinutes}
+            onChange={nextValue => {
+              if (nextValue !== null) {
+                setDurationMinutes(nextValue);
+              }
+            }}
+          />
           <Pressable accessibilityRole="button" disabled={!title.trim() || isSaving} onPress={handleSave} style={[styles.saveButton, !title.trim() ? styles.disabledButton : null]}>
             <Text style={styles.saveText}>{preset ? 'Save changes' : 'Add preset'}</Text>
           </Pressable>

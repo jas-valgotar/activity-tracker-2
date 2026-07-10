@@ -1,4 +1,4 @@
-// Overview: Creates the hidden swipeable three-screen pager around the default home screen.
+// Overview: Creates the swipeable four-screen pager for focus, daily presets, completed, and all activity.
 
 import React from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
@@ -8,7 +8,6 @@ import { AllActivitiesScreen } from '../screens/AllActivitiesScreen';
 import { CompletedScreen } from '../screens/CompletedScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { DailyScreen } from '../screens/DailyScreen';
-import { ProgressScreen } from '../screens/ProgressScreen';
 import { MainTabBar } from './MainTabBar';
 
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
@@ -18,7 +17,7 @@ function renderMainTabBar(props: MaterialTopTabBarProps) {
   return <MainTabBar {...props} />;
 }
 
-// Renders the focus, daily presets, progress, completed, and all-activity screens.
+// Renders the focus, daily presets, completed, and all-activity screens.
 export function MainTabs() {
   return (
     <Tab.Navigator
@@ -32,7 +31,6 @@ export function MainTabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Daily" component={DailyScreen} />
-      <Tab.Screen name="Progress" component={ProgressScreen} />
       <Tab.Screen name="Completed" component={CompletedScreen} />
       <Tab.Screen name="All" component={AllActivitiesScreen} />
     </Tab.Navigator>

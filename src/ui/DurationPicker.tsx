@@ -13,8 +13,8 @@ import {
 import { colors, radii, spacing } from './theme';
 
 type DurationPickerProps = {
-  value: number;
-  onChange(value: number): void;
+  value: number | null;
+  onChange(value: number | null): void;
   label?: string;
 };
 
@@ -23,10 +23,10 @@ const QUICK_DURATIONS = [15, 30, 45, 60, 90, 120];
 // Renders quick duration chips and a modal stepper for less common targets.
 export function DurationPicker({ value, onChange, label = 'Duration' }: DurationPickerProps) {
   const [isCustomOpen, setIsCustomOpen] = useState(false);
-  const [customValue, setCustomValue] = useState(value);
+  const [customValue, setCustomValue] = useState<number>(value ?? DEFAULT_TARGET_DURATION_MINUTES);
 
   function openCustomPicker() {
-    setCustomValue(value);
+    setCustomValue(value ?? DEFAULT_TARGET_DURATION_MINUTES);
     setIsCustomOpen(true);
   }
 
@@ -48,7 +48,9 @@ export function DurationPicker({ value, onChange, label = 'Duration' }: Duration
     <View>
       <View style={styles.labelRow}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={styles.selectedValue}>{formatTargetDuration(value || DEFAULT_TARGET_DURATION_MINUTES)}</Text>
+        <Text style={styles.selectedValue}>
+          {value === null ? `Default ${formatTargetDuration(DEFAULT_TARGET_DURATION_MINUTES)}` : formatTargetDuration(value)}
+        </Text>
       </View>
       <ScrollView contentContainerStyle={styles.options} horizontal showsHorizontalScrollIndicator={false}>
         {QUICK_DURATIONS.map(duration => {

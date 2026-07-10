@@ -1,12 +1,14 @@
 // Overview: Renders the compact elapsed-time label inside a spiky rectangular progress frame.
 
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import Svg, { Line } from 'react-native-svg';
 import { formatDuration, getHighlightedSpikeCount } from '../domain/time';
 import { colors } from './theme';
 
 type TimerRingProps = {
+  accentColor?: string;
+  labelBackgroundColor?: string;
   elapsedMs: number;
   targetDurationMinutes?: number;
   frozen?: boolean;
@@ -23,6 +25,7 @@ const TOP_BOTTOM_SPIKES = 10;
 const SIDE_SPIKES = 5;
 const SPIKES = 2 * (TOP_BOTTOM_SPIKES + SIDE_SPIKES);
 const STROKE_WIDTH = 8;
+const AnimatedLine = Animated.createAnimatedComponent(Line);
 
 type SpikeLine = {
   x1: number;
@@ -66,7 +69,14 @@ function getSpikeLine(index: number): SpikeLine {
 }
 
 // Draws a fixed-size 30-segment spiky rectangle that fills against the activity target.
-export function TimerRing({ elapsedMs, targetDurationMinutes = 60, frozen = false, blinkNextSpike = false }: TimerRingProps) {
+export function TimerRing({
+  accentColor = colors.primary,
+  labelBackgroundColor = colors.surface,
+  elapsedMs,
+  targetDurationMinutes = 60,
+  frozen = false,
+  blinkNextSpike = false,
+}: TimerRingProps) {
   const elapsedLabel = formatDuration(elapsedMs);
   const highlightedSpikes = getHighlightedSpikeCount({
     elapsedMs,
@@ -74,21 +84,37 @@ export function TimerRing({ elapsedMs, targetDurationMinutes = 60, frozen = fals
     showFullRingAtBoundary: frozen,
   });
   const nextSpikeIndex = blinkNextSpike && !frozen ? highlightedSpikes : null;
-  const [isBlinkVisible, setIsBlinkVisible] = useState(true);
+  const pulseOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (nextSpikeIndex === null) {
-      setIsBlinkVisible(true);
+      pulseOpacity.stopAnimation();
+      pulseOpacity.setValue(1);
       return;
     }
 
-    setIsBlinkVisible(true);
-    const timer = setInterval(() => {
-      setIsBlinkVisible(currentValue => !currentValue);
-    }, 500);
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseOpacity, {
+          toValue: 0.35,
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+        Animated.timing(pulseOpacity, {
+          toValue: 1,
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: false,
+        }),
+      ]),
+    );
 
-    return () => clearInterval(timer);
-  }, [nextSpikeIndex]);
+    pulseOpacity.setValue(1);
+    animation.start();
+
+    return () => animation.stop();
+  }, [nextSpikeIndex, pulseOpacity]);
 
   return (
     <View style={styles.container} accessibilityLabel={`${elapsedLabel} elapsed`}>
@@ -99,14 +125,22 @@ export function TimerRing({ elapsedMs, targetDurationMinutes = 60, frozen = fals
           let opacity = 1;
 
           if (index < highlightedSpikes) {
-            stroke = frozen ? colors.complete : colors.primary;
+            stroke = frozen ? colors.complete : accentColor;
           } else if (index === nextSpikeIndex) {
-            stroke = colors.primary;
-            opacity = isBlinkVisible ? 1 : 0.25;
+            stroke = accentColor;
           }
 
-          return (
-            <Line
+          return index === nextSpikeIndex ? <AnimatedLine
+              key={index}
+              opacity={pulseOpacity}
+              stroke={stroke}
+              strokeLinecap="round"
+              strokeWidth={STROKE_WIDTH}
+              x1={line.x1}
+              x2={line.x2}
+              y1={line.y1}
+              y2={line.y2}
+            /> : <Line
               key={index}
               opacity={opacity}
               stroke={stroke}
@@ -116,14 +150,14 @@ export function TimerRing({ elapsedMs, targetDurationMinutes = 60, frozen = fals
               x2={line.x2}
               y1={line.y1}
               y2={line.y2}
-            />
-          );
+            />;
         })}
       </Svg>
       <View
         style={[
           styles.labelContainer,
           frozen ? styles.completedContainer : styles.activeContainer,
+          { backgroundColor: labelBackgroundColor },
         ]}
       >
         <Text adjustsFontSizeToFit minimumFontScale={0.75} numberOfLines={1} style={styles.label}>

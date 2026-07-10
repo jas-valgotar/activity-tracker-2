@@ -7,10 +7,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CheckCircle2, Pause, Play, Trash2 } from 'lucide-react-native';
 import { useAppData } from '../data/AppDataProvider';
-import type { ActivityWithLogs } from '../domain/activityTypes';
+import type { ActivityWithLogs, ProgressPeriod, ProgressReport } from '../domain/activityTypes';
 import { calculateActiveElapsedMs, formatDurationWithSeconds, formatEventTimestamp, formatTargetDuration } from '../domain/time';
 import type { RootStackParamList } from '../navigation/types';
 import { TimerRing } from '../ui/TimerRing';
+import { ActivityProgressCard } from '../ui/ActivityProgressCard';
 import { colors, radii, spacing } from '../ui/theme';
 
 type DetailRoute = RouteProp<RootStackParamList, 'ActivityDetail'>;
@@ -26,8 +27,11 @@ export function ActivityDetailScreen() {
     resumeActivity,
     completeActivity,
     deleteActivity,
+    getActivityProgressReport,
   } = useAppData();
   const [activity, setActivity] = useState<ActivityWithLogs | null>(null);
+  const [progressPeriod, setProgressPeriod] = useState<ProgressPeriod>('week');
+  const [progressReport, setProgressReport] = useState<ProgressReport | null>(null);
   const [now, setNow] = useState(Date.now());
 
   // Loads the latest activity state and navigates back if it no longer exists.
@@ -41,12 +45,24 @@ export function ActivityDetailScreen() {
     setActivity(nextActivity);
   }, [getActivityWithLogs, navigation, route.params.activityId]);
 
+  // Loads progress for the currently opened activity and selected period.
+  const loadProgress = useCallback(async () => {
+    const nextReport = await getActivityProgressReport(route.params.activityId, progressPeriod);
+    setProgressReport(nextReport);
+  }, [getActivityProgressReport, progressPeriod, route.params.activityId]);
+
   // Loads activity details when the screen mounts or the route changes.
   useEffect(() => {
     loadActivity().catch(error => {
       console.error('Failed to load activity detail', error);
     });
   }, [loadActivity]);
+
+  useEffect(() => {
+    loadProgress().catch(error => {
+      console.error('Failed to load activity progress', error);
+    });
+  }, [loadProgress]);
 
   // Refreshes elapsed-time display at second precision while the detail screen is visible.
   useEffect(() => {
@@ -60,13 +76,18 @@ export function ActivityDetailScreen() {
       return;
     }
 
-    if (activity.status === 'paused') {
-      await resumeActivity(activity.id);
-    } else {
-      await pauseActivity(activity.id);
-    }
+    try {
+      if (activity.status === 'paused') {
+        await resumeActivity(activity.id);
+      } else {
+        await pauseActivity(activity.id);
+      }
 
-    await loadActivity();
+      await loadActivity();
+      await loadProgress();
+    } catch (error) {
+      Alert.alert('Could Not Resume Activity', error instanceof Error ? error.message : 'Pause the current activity first.');
+    }
   }
 
   // Completes the activity and refreshes the detail state.
@@ -77,6 +98,7 @@ export function ActivityDetailScreen() {
 
     await completeActivity(activity.id);
     await loadActivity();
+    await loadProgress();
   }
 
   // Confirms deletion, soft-deletes the activity, and returns to the list.
@@ -141,6 +163,14 @@ export function ActivityDetailScreen() {
           frozen={isCompleted}
         />
       </View>
+      {progressReport ? (
+        <ActivityProgressCard
+          onChangePeriod={setProgressPeriod}
+          period={progressPeriod}
+          report={progressReport}
+          targetDurationMinutes={activity.targetDurationMinutes}
+        />
+      ) : null}
       <View style={styles.actions}>
         {!isCompleted ? (
           <Pressable accessibilityRole="button" onPress={handlePauseResume} style={[styles.actionButton, styles.secondaryButton]}>

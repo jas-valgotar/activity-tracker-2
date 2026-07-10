@@ -4,19 +4,18 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Mic, Plus, Sparkles } from 'lucide-react-native';
 import { createSpeechRecognitionService } from '../services/speech/SpeechRecognitionService';
-import { DEFAULT_TARGET_DURATION_MINUTES } from '../domain/time';
 import { DurationPicker } from './DurationPicker';
 import { colors, radii, spacing } from './theme';
 
 type ActivityInputBarProps = {
-  onAdd(title: string, durationMinutes: number): Promise<void>;
+  onAdd(title: string, durationMinutes?: number): Promise<void>;
 };
 
 // Renders the bottom activity entry bar on the default home screen.
 export function ActivityInputBar({ onAdd }: ActivityInputBarProps) {
   const speechService = useMemo(() => createSpeechRecognitionService(), []);
   const [title, setTitle] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState(DEFAULT_TARGET_DURATION_MINUTES);
+  const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isListening, setIsListening] = useState(false);
 
@@ -29,9 +28,9 @@ export function ActivityInputBar({ onAdd }: ActivityInputBarProps) {
 
     setIsAdding(true);
     try {
-      await onAdd(trimmedTitle, durationMinutes);
+      await onAdd(trimmedTitle, durationMinutes ?? undefined);
       setTitle('');
-      setDurationMinutes(DEFAULT_TARGET_DURATION_MINUTES);
+      setDurationMinutes(null);
     } catch (error) {
       Alert.alert('Could Not Start Activity', error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -79,7 +78,11 @@ export function ActivityInputBar({ onAdd }: ActivityInputBarProps) {
         </View>
       </View>
       <View style={styles.durationPicker}>
-        <DurationPicker value={durationMinutes} onChange={setDurationMinutes} />
+        <DurationPicker
+          label="Duration (optional)"
+          value={durationMinutes}
+          onChange={setDurationMinutes}
+        />
       </View>
       <View style={styles.actions}>
         <Pressable

@@ -70,8 +70,12 @@ export function DailyScreen() {
   }
 
   async function handleStart(preset: ActivityPreset) {
-    await createActivity(preset.title, preset.durationMinutes);
-    navigation.navigate('Home');
+    try {
+      await createActivity(preset.title, preset.durationMinutes);
+      navigation.navigate('Home');
+    } catch (error) {
+      Alert.alert('Could Not Start Activity', error instanceof Error ? error.message : 'Pause the current activity first.');
+    }
   }
 
   return (

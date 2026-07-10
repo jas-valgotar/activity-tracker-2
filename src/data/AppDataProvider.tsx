@@ -36,7 +36,7 @@ type AppDataContextValue = {
   createPreset(title: string, durationMinutes: number): Promise<void>;
   updatePreset(id: string, title: string, durationMinutes: number): Promise<void>;
   deletePreset(id: string): Promise<void>;
-  getProgressReport(period: ProgressPeriod): Promise<ProgressReport>;
+  getActivityProgressReport(activityId: string, period: ProgressPeriod): Promise<ProgressReport>;
   pauseActivity(id: string): Promise<void>;
   resumeActivity(id: string): Promise<void>;
   completeActivity(id: string): Promise<void>;
@@ -178,11 +178,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     [getRepositories],
   );
 
-  // Loads progress for the requested calendar period.
-  const getProgressReport = useCallback(
-    async (period: ProgressPeriod) => {
+  // Loads progress for one activity in the requested calendar period.
+  const getActivityProgressReport = useCallback(
+    async (activityId: string, period: ProgressPeriod) => {
       const { activities } = getRepositories();
-      return activities.getProgressReport(period);
+      return activities.getActivityProgressReport(activityId, period);
     },
     [getRepositories],
   );
@@ -272,7 +272,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       createPreset,
       updatePreset,
       deletePreset,
-      getProgressReport,
+      getActivityProgressReport,
       pauseActivity,
       resumeActivity,
       completeActivity,
@@ -293,7 +293,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       createPreset,
       updatePreset,
       deletePreset,
-      getProgressReport,
+      getActivityProgressReport,
       pauseActivity,
       resumeActivity,
       completeActivity,

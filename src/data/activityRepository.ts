@@ -40,7 +40,7 @@ export type ActivityRepository = {
   createActivity(title: string, targetDurationMinutes?: number): Promise<ActivityWithLogs>;
   listActivities(filter: ActivityFilter, sortMode: ActivitySortMode): Promise<ActivityWithLogs[]>;
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
-  getProgressReport(period: ProgressPeriod, now?: number): Promise<ProgressReport>;
+  getActivityProgressReport(id: string, period: ProgressPeriod, now?: number): Promise<ProgressReport>;
   pauseActivity(id: string): Promise<void>;
   resumeActivity(id: string): Promise<void>;
   completeActivity(id: string): Promise<void>;
@@ -97,6 +97,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
       if (!isValidTargetDurationMinutes(targetDurationMinutes)) {
         throw new Error('Activity duration must be a 15-minute increment between 15 minutes and 8 hours.');
       }
+      await ensureNoOtherActiveActivity();
 
       const now = Date.now();
       const id = createId();
@@ -128,7 +129,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
         `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
          FROM activities
          WHERE deleted_at IS NULL ${statusWhere}
-         ORDER BY ${orderBy}`,
+         ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, ${orderBy}`,
       );
 
       return hydrateActivities(result.rows as DbActivityRow[]);
@@ -155,12 +156,13 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
       };
     },
 
-    // Builds a progress report from all non-deleted activities and event histories.
-    async getProgressReport(period, now = Date.now()) {
+    // Builds a progress report from one non-deleted activity and its event history.
+    async getActivityProgressReport(id, period, now = Date.now()) {
       const result = await db.execute(
         `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
          FROM activities
-         WHERE deleted_at IS NULL`,
+         WHERE id = ? AND deleted_at IS NULL`,
+        [id],
       );
       const activities = await hydrateActivities(result.rows as DbActivityRow[]);
       return buildProgressReport(activities, period, now);
@@ -186,6 +188,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
       if (!activity || activity.deleted_at !== null || activity.status !== 'paused') {
         return;
       }
+      await ensureNoOtherActiveActivity(id);
 
       const now = Date.now();
       await db.executeBatch([
@@ -230,15 +233,46 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
       }
 
       const now = Date.now();
-      await db.executeBatch([
-        ['UPDATE activities SET deleted_at = NULL, last_accessed_at = ? WHERE id = ?', [now, id]],
+      const shouldRestorePaused =
+        activity.status === 'active' && (await hasOtherActiveActivity(activity.id));
+      const restoredStatus = shouldRestorePaused ? 'paused' : activity.status;
+      const restoreCommands: Array<[string, Array<string | number | null>]> = [
+        ['UPDATE activities SET deleted_at = NULL, status = ?, last_accessed_at = ? WHERE id = ?', [restoredStatus, now, id]],
         [
           'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
           [createId(), id, 'restored', now],
         ],
-      ]);
+      ];
+      if (shouldRestorePaused) {
+        restoreCommands.push([
+          'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
+          [createId(), id, 'paused', now],
+        ]);
+      }
+      await db.executeBatch(restoreCommands);
     },
   };
+
+  // Prevents a second activity from entering the active state.
+  async function ensureNoOtherActiveActivity(excludedId?: string): Promise<void> {
+    if (await hasOtherActiveActivity(excludedId)) {
+      throw new Error('Only one activity can be active at a time. Pause or complete the current activity first.');
+    }
+  }
+
+  // Checks whether a non-deleted active activity exists besides the optional excluded activity.
+  async function hasOtherActiveActivity(excludedId?: string): Promise<boolean> {
+    const result = await db.execute(
+      `SELECT id
+       FROM activities
+       WHERE status = 'active' AND deleted_at IS NULL
+       ${excludedId ? 'AND id <> ?' : ''}
+       LIMIT 1`,
+      excludedId ? [excludedId] : [],
+    );
+
+    return result.rows.length > 0;
+  }
 }
 
 // Returns the screen-specific SQL filter for non-deleted activity lists.

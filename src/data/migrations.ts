@@ -29,6 +29,10 @@ export async function runMigrations(db: DatabaseClient): Promise<void> {
       FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE
     )
   `);
+  await normalizeActiveActivities(db);
+  await db.execute(
+    'CREATE UNIQUE INDEX IF NOT EXISTS one_active_activity ON activities (status) WHERE status = \'active\' AND deleted_at IS NULL',
+  );
   await db.execute(`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY NOT NULL,
@@ -49,6 +53,32 @@ export async function runMigrations(db: DatabaseClient): Promise<void> {
     ['activity_sort_mode', DEFAULT_SORT_MODE],
   );
   await seedDefaultPresets(db);
+}
+
+// Preserves the most recently accessed active activity and pauses older duplicates before enforcing the unique index.
+async function normalizeActiveActivities(db: DatabaseClient): Promise<void> {
+  const result = await db.execute(
+    `SELECT id
+     FROM activities
+     WHERE status = 'active' AND deleted_at IS NULL
+     ORDER BY last_accessed_at DESC, started_at DESC`,
+  );
+  const duplicateRows = result.rows.slice(1);
+
+  if (duplicateRows.length === 0) {
+    return;
+  }
+
+  const now = Date.now();
+  const commands = duplicateRows.flatMap(row => [
+    ['UPDATE activities SET status = ?, last_accessed_at = ? WHERE id = ?', ['paused', now, row.id]],
+    [
+      'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
+      [createMigrationId(), row.id, 'paused', now],
+    ],
+  ]);
+
+  await db.executeBatch(commands as Array<[string, Array<string | number | null>]>);
 }
 
 // Adds the target duration to databases created before timed activities existed.
@@ -86,4 +116,9 @@ async function seedDefaultPresets(db: DatabaseClient): Promise<void> {
     ],
     ['INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['daily_presets_seeded', 'true']],
   ]);
+}
+
+// Creates a migration-local event ID without adding another dependency.
+function createMigrationId(): string {
+  return `migration-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }

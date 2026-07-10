@@ -14,7 +14,7 @@ export function HomeScreen() {
 
   // Creates a new activity and lets the list reload through focus or manual refresh.
   const handleAddActivity = useCallback(
-    async (title: string, durationMinutes: number) => {
+    async (title: string, durationMinutes?: number) => {
       await createActivity(title, durationMinutes);
     },
     [createActivity],

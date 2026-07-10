@@ -48,6 +48,38 @@ describe('activity repository', () => {
     expect((await activities.getActivityWithLogs(created.id))?.targetDurationMinutes).toBe(30);
   });
 
+  it('allows only one active activity at a time', async () => {
+    const { activities } = await createRepositories();
+    const first = await activities.createActivity('First focus');
+
+    await expect(activities.createActivity('Second focus')).rejects.toThrow('Only one activity can be active at a time.');
+
+    await activities.pauseActivity(first.id);
+    const second = await activities.createActivity('Second focus');
+    expect(second.status).toBe('active');
+  });
+
+  it('prevents resuming a paused activity while another activity is active', async () => {
+    const { activities } = await createRepositories();
+    const first = await activities.createActivity('First focus');
+    await activities.pauseActivity(first.id);
+    await activities.createActivity('Second focus');
+
+    await expect(activities.resumeActivity(first.id)).rejects.toThrow('Only one activity can be active at a time.');
+  });
+
+  it('restores a deleted active activity as paused when another activity has started', async () => {
+    const { activities } = await createRepositories();
+    const deleted = await activities.createActivity('Deleted focus');
+    await activities.softDeleteActivity(deleted.id);
+    const other = await activities.createActivity('Current focus');
+
+    await activities.restoreActivity(deleted.id);
+
+    expect((await activities.getActivityWithLogs(deleted.id))?.status).toBe('paused');
+    expect((await activities.getActivityWithLogs(other.id))?.status).toBe('active');
+  });
+
   it('seeds and manages daily activity presets', async () => {
     const { presets } = await createRepositories();
     const seeded = await presets.listPresets();
@@ -90,7 +122,7 @@ describe('activity repository', () => {
     nowSpy.mockReturnValue(completedAt);
     await activities.completeActivity(created.id);
 
-    const report = await activities.getProgressReport('week', new Date(2026, 6, 15, 12, 0, 0).getTime());
+    const report = await activities.getActivityProgressReport(created.id, 'week', new Date(2026, 6, 15, 12, 0, 0).getTime());
     expect(report.totalActiveMs).toBe(90 * 60 * 1000);
     expect(report.sessionsStarted).toBe(1);
     expect(report.sessionsCompleted).toBe(1);
@@ -176,6 +208,7 @@ describe('activity repository', () => {
 
     nowSpy.mockReturnValue(1_000);
     const first = await activities.createActivity('First activity');
+    await activities.pauseActivity(first.id);
     nowSpy.mockReturnValue(2_000);
     const second = await activities.createActivity('Second activity');
 
@@ -184,16 +217,16 @@ describe('activity repository', () => {
       first.id,
     ]);
     expect((await activities.listActivities('all', 'oldest')).map(activity => activity.id)).toEqual([
-      first.id,
       second.id,
+      first.id,
     ]);
 
     nowSpy.mockReturnValue(3_000);
     await activities.getActivityWithLogs(first.id);
 
     expect((await activities.listActivities('all', 'lastAccessed')).map(activity => activity.id)).toEqual([
-      first.id,
       second.id,
+      first.id,
     ]);
   });
 

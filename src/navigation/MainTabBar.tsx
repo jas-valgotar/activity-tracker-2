@@ -1,9 +1,9 @@
-// Overview: Renders the bottom screen switcher for Completed, Home, and All activity tabs.
+// Overview: Renders the bottom screen switcher for focus, daily presets, completed, and all activities.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
-import { BarChart3, CalendarDays, CheckCircle2, CircleDot, List } from 'lucide-react-native';
+import { CalendarDays, CheckCircle2, CircleDot, List } from 'lucide-react-native';
 import type { MainTabParamList } from './types';
 import { colors, radii, spacing } from '../ui/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +17,6 @@ const tabItems: Array<{
 }> = [
   { name: 'Home', label: 'Focus', Icon: CircleDot },
   { name: 'Daily', label: 'Daily', Icon: CalendarDays },
-  { name: 'Progress', label: 'Stats', Icon: BarChart3 },
   { name: 'Completed', label: 'Done', Icon: CheckCircle2 },
   { name: 'All', label: 'All', Icon: List },
 ];

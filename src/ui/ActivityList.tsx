@@ -1,7 +1,7 @@
 // Overview: Renders scrollable activity lists with shared empty, loading, and row behavior.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { ListTodo } from 'lucide-react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -94,8 +94,12 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
 
   // Resumes an activity and refreshes the list.
   async function handleResume(activity: ActivityWithLogs) {
-    await resumeActivity(activity.id);
-    await loadActivities();
+    try {
+      await resumeActivity(activity.id);
+      await loadActivities();
+    } catch (error) {
+      Alert.alert('Could Not Resume Activity', error instanceof Error ? error.message : 'Pause the current activity first.');
+    }
   }
 
   // Completes an activity and refreshes the list.
@@ -124,16 +128,26 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
       data={activities}
       keyExtractor={activity => activity.id}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
-      renderItem={({ item }) => (
-        <ActivityRow
-          activity={item}
-          now={now}
-          onComplete={handleComplete}
-          onDelete={handleDelete}
-          onPause={handlePause}
-          onPress={handleOpenActivity}
-          onResume={handleResume}
-        />
+      renderItem={({ item, index }) => (
+        <React.Fragment key={item.id}>
+          <ActivityRow
+            activity={item}
+            colorIndex={index}
+            now={now}
+            onComplete={handleComplete}
+            onDelete={handleDelete}
+            onPause={handlePause}
+            onPress={handleOpenActivity}
+            onResume={handleResume}
+          />
+          {item.status === 'active' && index < activities.length - 1 ? (
+            <View style={styles.activeDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerLabel}>OTHER ACTIVITIES</Text>
+              <View style={styles.dividerLine} />
+            </View>
+          ) : null}
+        </React.Fragment>
       )}
       ListEmptyComponent={
         <View style={styles.emptyState}>
@@ -152,6 +166,24 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.xl,
+  },
+  activeDivider: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+    marginTop: -spacing.xs,
+  },
+  dividerLabel: {
+    color: colors.muted,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  dividerLine: {
+    backgroundColor: colors.border,
+    flex: 1,
+    height: 1,
   },
   emptyContent: {
     flexGrow: 1,
