@@ -8,10 +8,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CheckCircle2, Pause, Play, Trash2 } from 'lucide-react-native';
 import { useAppData } from '../data/AppDataProvider';
 import type { ActivityWithLogs } from '../domain/activityTypes';
-import { calculateActiveElapsedMs, formatDurationWithSeconds, formatEventTimestamp } from '../domain/time';
+import { calculateActiveElapsedMs, formatDurationWithSeconds, formatEventTimestamp, formatTargetDuration } from '../domain/time';
 import type { RootStackParamList } from '../navigation/types';
 import { TimerRing } from '../ui/TimerRing';
-import { colors, spacing } from '../ui/theme';
+import { colors, radii, spacing } from '../ui/theme';
 
 type DetailRoute = RouteProp<RootStackParamList, 'ActivityDetail'>;
 type DetailNavigation = NativeStackNavigationProp<RootStackParamList, 'ActivityDetail'>;
@@ -115,8 +115,9 @@ export function ActivityDetailScreen() {
   const isPaused = activity.status === 'paused';
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.topBar}>
+        <Text style={styles.eyebrow}>SESSION DETAILS</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Delete activity" onPress={confirmDelete} style={styles.deleteIcon}>
           <Trash2 color={colors.danger} size={24} />
         </Pressable>
@@ -124,11 +125,21 @@ export function ActivityDetailScreen() {
       <View style={styles.summary}>
         <View style={styles.summaryCopy}>
           <Text style={styles.title}>{activity.title}</Text>
-          <Text style={styles.status}>
-            {activity.status.toUpperCase()} • {formatDurationWithSeconds(elapsedMs)}
-          </Text>
+          <View style={[styles.statusBadge, isCompleted ? styles.completedBadge : isPaused ? styles.pausedBadge : null]}>
+            <View style={[styles.statusDot, isCompleted ? styles.completedDot : isPaused ? styles.pausedDot : null]} />
+            <Text style={[styles.status, isCompleted ? styles.completedText : isPaused ? styles.pausedText : null]}>
+              {activity.status === 'active' ? 'IN FOCUS' : activity.status.toUpperCase()}
+            </Text>
+          </View>
+          <Text style={styles.elapsed}>{formatDurationWithSeconds(elapsedMs)}</Text>
+          <Text style={styles.target}>Target {formatTargetDuration(activity.targetDurationMinutes)}</Text>
         </View>
-        <TimerRing elapsedMs={elapsedMs} blinkNextSpike={activity.status === 'active'} frozen={isCompleted} />
+        <TimerRing
+          elapsedMs={elapsedMs}
+          targetDurationMinutes={activity.targetDurationMinutes}
+          blinkNextSpike={activity.status === 'active'}
+          frozen={isCompleted}
+        />
       </View>
       <View style={styles.actions}>
         {!isCompleted ? (
@@ -144,12 +155,18 @@ export function ActivityDetailScreen() {
           </Pressable>
         ) : null}
       </View>
-      <Text style={styles.sectionTitle}>Log</Text>
+      <View style={styles.sectionHeading}>
+        <Text style={styles.sectionTitle}>Session log</Text>
+        <Text style={styles.eventCount}>{activity.events.length} events</Text>
+      </View>
       <View style={styles.logList}>
         {activity.events.map(event => (
           <View key={event.id} style={styles.logItem}>
-            <Text style={styles.logType}>{event.type.toUpperCase()}</Text>
-            <Text style={styles.logTime}>{formatEventTimestamp(event.occurredAt)}</Text>
+            <View style={styles.logMarker} />
+            <View style={styles.logCopy}>
+              <Text style={styles.logType}>{event.type.toUpperCase()}</Text>
+              <Text style={styles.logTime}>{formatEventTimestamp(event.occurredAt)}</Text>
+            </View>
           </View>
         ))}
       </View>
@@ -160,7 +177,7 @@ export function ActivityDetailScreen() {
 const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: radii.pill,
     flex: 1,
     flexDirection: 'row',
     gap: spacing.sm,
@@ -173,13 +190,22 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   content: {
-    padding: spacing.lg,
+    padding: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
   deleteIcon: {
     alignItems: 'center',
-    height: 44,
+    backgroundColor: colors.dangerSoft,
+    borderRadius: radii.pill,
+    height: 42,
     justifyContent: 'center',
     width: 44,
+  },
+  eyebrow: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.3,
   },
   loading: {
     alignItems: 'center',
@@ -192,17 +218,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   logItem: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingVertical: spacing.lg,
   },
   logList: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.md,
     borderWidth: 1,
     paddingHorizontal: spacing.lg,
+  },
+  logMarker: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    height: 12,
+    width: 12,
+  },
+  logCopy: {
+    flex: 1,
+    gap: spacing.xs,
   },
   logTime: {
     color: colors.muted,
@@ -214,7 +252,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryDeep,
   },
   primaryText: {
     color: colors.surface,
@@ -231,24 +269,83 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
+  },
+  sectionHeading: {
+    alignItems: 'baseline',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: spacing.md,
-    marginTop: spacing.xl,
+    marginTop: spacing.xxl,
+  },
+  eventCount: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '800',
   },
   status: {
+    color: colors.primaryDeep,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  statusBadge: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primarySoft,
+    borderRadius: radii.pill,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  statusDot: {
+    backgroundColor: colors.primary,
+    borderRadius: radii.pill,
+    height: 6,
+    width: 6,
+  },
+  pausedBadge: {
+    backgroundColor: colors.warningSoft,
+  },
+  pausedDot: {
+    backgroundColor: colors.warning,
+  },
+  pausedText: {
+    color: colors.warning,
+  },
+  completedBadge: {
+    backgroundColor: colors.completeSoft,
+  },
+  completedDot: {
+    backgroundColor: colors.complete,
+  },
+  completedText: {
+    color: colors.complete,
+  },
+  elapsed: {
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  target: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
   },
   summary: {
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.lg,
     borderWidth: 1,
     flexDirection: 'row',
-    padding: spacing.lg,
+    padding: spacing.xl,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    elevation: 3,
   },
   summaryCopy: {
     flex: 1,
@@ -257,11 +354,14 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '900',
+    letterSpacing: -0.6,
   },
   topBar: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
 });

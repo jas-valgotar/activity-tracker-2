@@ -1,6 +1,7 @@
 // Overview: Tests activity repository lifecycle behavior against an in-memory SQLite database.
 
 import { createActivityRepository } from '../src/data/activityRepository';
+import { createActivityPresetRepository } from '../src/data/activityPresetRepository';
 import { runMigrations } from '../src/data/migrations';
 import { createSettingsRepository } from '../src/data/settingsRepository';
 import { createSqliteTestClient } from '../test-utils/sqliteTestClient';
@@ -13,6 +14,7 @@ async function createRepositories() {
   return {
     db,
     activities: createActivityRepository(db),
+    presets: createActivityPresetRepository(db),
     settings: createSettingsRepository(db),
   };
 }
@@ -34,7 +36,64 @@ describe('activity repository', () => {
 
     expect(created.title).toBe('Write tests');
     expect(created.status).toBe('active');
+    expect(created.targetDurationMinutes).toBe(60);
     expect(created.events.map(event => event.type)).toEqual(['started']);
+  });
+
+  it('persists a custom activity target duration', async () => {
+    const { activities } = await createRepositories();
+    const created = await activities.createActivity('Meditation', 30);
+
+    expect(created.targetDurationMinutes).toBe(30);
+    expect((await activities.getActivityWithLogs(created.id))?.targetDurationMinutes).toBe(30);
+  });
+
+  it('seeds and manages daily activity presets', async () => {
+    const { presets } = await createRepositories();
+    const seeded = await presets.listPresets();
+
+    expect(seeded.map(preset => preset.title)).toEqual(['Meditation', 'Deep Work', 'Reading']);
+
+    await presets.createPreset('Walk', 45);
+    const created = (await presets.listPresets()).find(preset => preset.title === 'Walk');
+    expect(created?.durationMinutes).toBe(45);
+
+    if (!created) {
+      throw new Error('Created preset was not returned.');
+    }
+
+    await presets.updatePreset(created.id, 'Long Walk', 60);
+    expect((await presets.listPresets()).find(preset => preset.id === created.id)).toMatchObject({
+      title: 'Long Walk',
+      durationMinutes: 60,
+    });
+
+    await presets.deletePreset(created.id);
+    expect((await presets.listPresets()).some(preset => preset.id === created.id)).toBe(false);
+  });
+
+  it('does not recreate deleted seeded presets on a later migration', async () => {
+    const { db, presets } = await createRepositories();
+
+    await presets.deletePreset('preset-meditation');
+    await runMigrations(db);
+
+    expect((await presets.listPresets()).some(preset => preset.id === 'preset-meditation')).toBe(false);
+  });
+
+  it('reports progress from completed lifecycle intervals', async () => {
+    const { activities } = await createRepositories();
+    const startedAt = new Date(2026, 6, 13, 9, 0, 0).getTime();
+    const completedAt = new Date(2026, 6, 13, 10, 30, 0).getTime();
+    nowSpy.mockReturnValue(startedAt);
+    const created = await activities.createActivity('Weekly focus');
+    nowSpy.mockReturnValue(completedAt);
+    await activities.completeActivity(created.id);
+
+    const report = await activities.getProgressReport('week', new Date(2026, 6, 15, 12, 0, 0).getTime());
+    expect(report.totalActiveMs).toBe(90 * 60 * 1000);
+    expect(report.sessionsStarted).toBe(1);
+    expect(report.sessionsCompleted).toBe(1);
   });
 
   it('rejects blank activity titles before writing rows', async () => {

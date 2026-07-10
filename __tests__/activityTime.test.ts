@@ -2,6 +2,7 @@
 
 import type { ActivityEvent, ActivityEventType, ActivityStatus } from '../src/domain/activityTypes';
 import {
+  buildProgressReport,
   calculateActiveElapsedMs,
   formatDuration,
   formatDurationWithSeconds,
@@ -25,20 +26,21 @@ function elapsed(events: ActivityEvent[], status: ActivityStatus, now: number): 
 }
 
 describe('activity time calculations', () => {
-  it('highlights timer spikes using the elapsed minute modulo 30 rule', () => {
+  it('fills the default 60-minute timer proportionally across 30 segments', () => {
     expect(getHighlightedSpikeCount({ elapsedMs: 0 })).toBe(0);
-    expect(getHighlightedSpikeCount({ elapsedMs: 14 * 60 * 1000 })).toBe(14);
-    expect(getHighlightedSpikeCount({ elapsedMs: 29 * 60 * 1000 })).toBe(29);
-    expect(getHighlightedSpikeCount({ elapsedMs: 30 * 60 * 1000 })).toBe(0);
-    expect(getHighlightedSpikeCount({ elapsedMs: 45 * 60 * 1000 })).toBe(15);
-    expect(getHighlightedSpikeCount({ elapsedMs: 60 * 60 * 1000 })).toBe(0);
+    expect(getHighlightedSpikeCount({ elapsedMs: 14 * 60 * 1000 })).toBe(7);
+    expect(getHighlightedSpikeCount({ elapsedMs: 30 * 60 * 1000 })).toBe(15);
+    expect(getHighlightedSpikeCount({ elapsedMs: 59 * 60 * 1000 })).toBe(29);
+    expect(getHighlightedSpikeCount({ elapsedMs: 60 * 60 * 1000 })).toBe(30);
+    expect(getHighlightedSpikeCount({ elapsedMs: 90 * 60 * 1000 })).toBe(30);
   });
 
-  it('shows a full frozen ring when completed on a 30-minute boundary', () => {
+  it('fills at the selected target duration', () => {
     expect(getHighlightedSpikeCount({ elapsedMs: 0, showFullRingAtBoundary: true })).toBe(0);
-    expect(getHighlightedSpikeCount({ elapsedMs: 30 * 60 * 1000, showFullRingAtBoundary: true })).toBe(30);
+    expect(getHighlightedSpikeCount({ elapsedMs: 15 * 60 * 1000, targetDurationMinutes: 30 })).toBe(15);
+    expect(getHighlightedSpikeCount({ elapsedMs: 30 * 60 * 1000, targetDurationMinutes: 30 })).toBe(30);
+    expect(getHighlightedSpikeCount({ elapsedMs: 45 * 60 * 1000, targetDurationMinutes: 30 })).toBe(30);
     expect(getHighlightedSpikeCount({ elapsedMs: 60 * 60 * 1000, showFullRingAtBoundary: true })).toBe(30);
-    expect(getHighlightedSpikeCount({ elapsedMs: 90 * 60 * 1000, showFullRingAtBoundary: true })).toBe(30);
   });
 
   it('formats elapsed hours with one decimal place', () => {
@@ -116,5 +118,34 @@ describe('activity time calculations', () => {
     const events = [event('started', 20 * 60 * 1000), event('paused', 10 * 60 * 1000)];
 
     expect(elapsed(events, 'paused', 60 * 60 * 1000)).toBe(0);
+  });
+
+  it('clips active intervals into weekly, monthly, and quarterly buckets', () => {
+    const startedAt = new Date(2026, 6, 13, 9, 0, 0).getTime();
+    const completedAt = new Date(2026, 6, 13, 10, 30, 0).getTime();
+    const now = new Date(2026, 6, 15, 12, 0, 0).getTime();
+    const activity = {
+      id: 'progress-1',
+      title: 'Focused session',
+      status: 'completed' as const,
+      startedAt,
+      targetDurationMinutes: 60,
+      completedAt,
+      lastAccessedAt: completedAt,
+      deletedAt: null,
+      events: [event('started', startedAt), event('completed', completedAt)],
+    };
+
+    const weekly = buildProgressReport([activity], 'week', now);
+    const monthly = buildProgressReport([activity], 'month', now);
+    const quarterly = buildProgressReport([activity], 'quarter', now);
+
+    expect(weekly.totalActiveMs).toBe(90 * 60 * 1000);
+    expect(weekly.sessionsStarted).toBe(1);
+    expect(weekly.sessionsCompleted).toBe(1);
+    expect(weekly.buckets).toHaveLength(7);
+    expect(monthly.buckets).toHaveLength(5);
+    expect(quarterly.buckets).toHaveLength(3);
+    expect(quarterly.buckets[0]?.activeMs).toBe(90 * 60 * 1000);
   });
 });

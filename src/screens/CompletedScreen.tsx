@@ -10,7 +10,7 @@ import { colors } from '../ui/theme';
 export function CompletedScreen() {
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Completed" />
+      <ScreenHeader title="Completed" subtitle="A quiet record of what you finished." />
       <ActivityList filter="completed" emptyText="No Completed Activity" />
     </View>
   );

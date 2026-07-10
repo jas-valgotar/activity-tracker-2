@@ -3,9 +3,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
-import { CheckCircle2, CircleDot, List } from 'lucide-react-native';
+import { BarChart3, CalendarDays, CheckCircle2, CircleDot, List } from 'lucide-react-native';
 import type { MainTabParamList } from './types';
-import { colors, spacing } from '../ui/theme';
+import { colors, radii, spacing } from '../ui/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type TabRouteName = keyof MainTabParamList;
 
@@ -14,15 +15,19 @@ const tabItems: Array<{
   label: string;
   Icon: typeof CheckCircle2;
 }> = [
-  { name: 'Completed', label: 'Completed', Icon: CheckCircle2 },
-  { name: 'Home', label: 'Current', Icon: CircleDot },
+  { name: 'Home', label: 'Focus', Icon: CircleDot },
+  { name: 'Daily', label: 'Daily', Icon: CalendarDays },
+  { name: 'Progress', label: 'Stats', Icon: BarChart3 },
+  { name: 'Completed', label: 'Done', Icon: CheckCircle2 },
   { name: 'All', label: 'All', Icon: List },
 ];
 
 // Provides an explicit bottom control for the same screens that can also be reached by swiping.
 export function MainTabBar({ state, navigation }: MaterialTopTabBarProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
       {tabItems.map(item => {
         const tabIndex = state.routes.findIndex(route => route.name === item.name);
         const isFocused = state.index === tabIndex;
@@ -58,35 +63,35 @@ export function MainTabBar({ state, navigation }: MaterialTopTabBarProps) {
 
 const styles = StyleSheet.create({
   activeTabButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryDeep,
+    shadowColor: colors.primaryDeep,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
   },
   activeTabLabel: {
     color: colors.surface,
   },
   container: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderTopWidth: 1,
+    backgroundColor: colors.background,
     flexDirection: 'row',
-    gap: spacing.sm,
-    paddingBottom: spacing.md,
-    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
   },
   tabButton: {
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: radii.pill,
     flex: 1,
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: spacing.sm,
     justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: spacing.sm,
+    minHeight: 50,
+    paddingHorizontal: spacing.md,
   },
   tabLabel: {
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '900',
   },
 });

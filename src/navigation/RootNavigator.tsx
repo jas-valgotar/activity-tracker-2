@@ -1,4 +1,4 @@
-// Overview: Wires the root navigation stack and its hidden activity pager.
+// Overview: Wires the root navigation stack and its iOS-styled activity pager.
 
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -17,6 +17,10 @@ export function RootNavigator() {
       <Stack.Navigator
         screenOptions={{
           contentStyle: { backgroundColor: colors.background },
+          headerBackTitle: 'Back',
+          headerTintColor: colors.primary,
+          headerTitleStyle: { color: colors.text, fontWeight: '700' },
+          headerStyle: { backgroundColor: colors.surface },
           headerShadowVisible: false,
         }}
       >

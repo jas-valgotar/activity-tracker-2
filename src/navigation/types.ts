@@ -8,7 +8,9 @@ export type RootStackParamList = {
 };
 
 export type MainTabParamList = {
-  Completed: undefined;
   Home: undefined;
+  Daily: undefined;
+  Progress: undefined;
+  Completed: undefined;
   All: undefined;
 };

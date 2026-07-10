@@ -8,14 +8,22 @@ import type {
   ActivityFilter,
   ActivitySortMode,
   ActivityWithLogs,
+  ProgressPeriod,
+  ProgressReport,
 } from '../domain/activityTypes';
 import { toOrderByClause } from '../domain/sort';
+import {
+  buildProgressReport,
+  DEFAULT_TARGET_DURATION_MINUTES,
+  isValidTargetDurationMinutes,
+} from '../domain/time';
 
 type DbActivityRow = {
   id: string;
   title: string;
   status: string;
   started_at: number;
+  target_duration_minutes: number;
   completed_at: number | null;
   last_accessed_at: number;
   deleted_at: number | null;
@@ -29,9 +37,10 @@ type DbEventRow = {
 };
 
 export type ActivityRepository = {
-  createActivity(title: string): Promise<ActivityWithLogs>;
+  createActivity(title: string, targetDurationMinutes?: number): Promise<ActivityWithLogs>;
   listActivities(filter: ActivityFilter, sortMode: ActivitySortMode): Promise<ActivityWithLogs[]>;
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
+  getProgressReport(period: ProgressPeriod, now?: number): Promise<ProgressReport>;
   pauseActivity(id: string): Promise<void>;
   resumeActivity(id: string): Promise<void>;
   completeActivity(id: string): Promise<void>;
@@ -49,7 +58,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
   // Loads a raw activity row without mutating last-accessed state.
   async function getActivityRow(id: string): Promise<DbActivityRow | null> {
     const result = await db.execute(
-      `SELECT id, title, status, started_at, completed_at, last_accessed_at, deleted_at
+      `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
        FROM activities
        WHERE id = ?`,
       [id],
@@ -80,10 +89,13 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
 
   return {
     // Starts a new active activity and records its start event.
-    async createActivity(title) {
+    async createActivity(title, targetDurationMinutes = DEFAULT_TARGET_DURATION_MINUTES) {
       const trimmedTitle = title.trim();
       if (!trimmedTitle) {
         throw new Error('Activity title is required.');
+      }
+      if (!isValidTargetDurationMinutes(targetDurationMinutes)) {
+        throw new Error('Activity duration must be a 15-minute increment between 15 minutes and 8 hours.');
       }
 
       const now = Date.now();
@@ -91,8 +103,8 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
 
       await db.executeBatch([
         [
-          'INSERT INTO activities (id, title, status, started_at, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [id, trimmedTitle, 'active', now, null, now, null],
+          'INSERT INTO activities (id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [id, trimmedTitle, 'active', now, targetDurationMinutes, null, now, null],
         ],
         [
           'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
@@ -113,7 +125,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
       const statusWhere = getFilterWhereClause(filter);
       const orderBy = toOrderByClause(sortMode);
       const result = await db.execute(
-        `SELECT id, title, status, started_at, completed_at, last_accessed_at, deleted_at
+        `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
          FROM activities
          WHERE deleted_at IS NULL ${statusWhere}
          ORDER BY ${orderBy}`,
@@ -126,7 +138,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
     async getActivityWithLogs(id) {
       await touchActivity(id);
       const result = await db.execute(
-        `SELECT id, title, status, started_at, completed_at, last_accessed_at, deleted_at
+        `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
          FROM activities
          WHERE id = ? AND deleted_at IS NULL`,
         [id],
@@ -141,6 +153,17 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
         ...rowToActivity(row),
         events: await getEvents(id),
       };
+    },
+
+    // Builds a progress report from all non-deleted activities and event histories.
+    async getProgressReport(period, now = Date.now()) {
+      const result = await db.execute(
+        `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
+         FROM activities
+         WHERE deleted_at IS NULL`,
+      );
+      const activities = await hydrateActivities(result.rows as DbActivityRow[]);
+      return buildProgressReport(activities, period, now);
     },
 
     // Pauses an active activity and records the pause event.
@@ -238,6 +261,7 @@ function rowToActivity(row: DbActivityRow): Activity {
     title: row.title,
     status: row.status as Activity['status'],
     startedAt: row.started_at,
+    targetDurationMinutes: row.target_duration_minutes,
     completedAt: row.completed_at,
     lastAccessedAt: row.last_accessed_at,
     deletedAt: row.deleted_at,

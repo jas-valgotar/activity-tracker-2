@@ -4,7 +4,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { RotateCcw, X } from 'lucide-react-native';
 import { useAppData } from '../data/AppDataProvider';
-import { colors, spacing } from './theme';
+import { colors, radii, spacing } from './theme';
 
 // Renders a bottom toast while a soft-deleted activity can still be restored.
 export function UndoToast() {
@@ -56,8 +56,8 @@ const styles = StyleSheet.create({
   },
   toast: {
     alignItems: 'center',
-    backgroundColor: colors.text,
-    borderRadius: 8,
+    backgroundColor: colors.primaryDeep,
+    borderRadius: radii.lg,
     bottom: spacing.lg,
     flexDirection: 'row',
     gap: spacing.md,
@@ -66,5 +66,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     position: 'absolute',
     right: spacing.lg,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
   },
 });

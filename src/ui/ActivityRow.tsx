@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckCircle2, Pause, Play, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, ChevronRight, Pause, Play, Trash2 } from 'lucide-react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import type { ActivityWithLogs } from '../domain/activityTypes';
-import { calculateActiveElapsedMs, formatDuration } from '../domain/time';
-import { colors, spacing } from './theme';
+import { calculateActiveElapsedMs, formatDuration, formatTargetDuration } from '../domain/time';
+import { colors, radii, spacing } from './theme';
 import { TimerRing } from './TimerRing';
 
 type ActivityRowProps = {
@@ -79,15 +79,25 @@ export function ActivityRow({
   return (
     <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
       <Pressable accessibilityRole="button" onPress={() => onPress(activity)} style={styles.row}>
+        <View style={[styles.statusDot, activity.status === 'completed' ? styles.completedDot : null, activity.status === 'paused' ? styles.pausedDot : null]} />
         <View style={styles.copy}>
+          <View style={styles.titleLine}>
+            <Text style={styles.statusLabel}>{activity.status === 'active' ? 'IN FOCUS' : activity.status.toUpperCase()}</Text>
+            <ChevronRight color={colors.border} size={18} />
+          </View>
           <Text numberOfLines={2} style={styles.title}>
             {activity.title}
           </Text>
           <Text style={styles.meta}>
-            {activity.status.toUpperCase()} • {formatDuration(elapsedMs)}
+            {formatDuration(elapsedMs)} elapsed · {formatTargetDuration(activity.targetDurationMinutes)} goal
           </Text>
         </View>
-        <TimerRing elapsedMs={elapsedMs} blinkNextSpike={activity.status === 'active'} frozen={isFrozen} />
+        <TimerRing
+          elapsedMs={elapsedMs}
+          targetDurationMinutes={activity.targetDurationMinutes}
+          blinkNextSpike={activity.status === 'active'}
+          frozen={isFrozen}
+        />
       </Pressable>
     </Swipeable>
   );
@@ -96,7 +106,7 @@ export function ActivityRow({
 const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
-    height: 74,
+    height: 88,
     justifyContent: 'center',
     width: 56,
   },
@@ -120,7 +130,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   neutralAction: {
@@ -130,19 +140,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: 'row',
     marginBottom: spacing.md,
-    minHeight: 92,
-    padding: spacing.md,
+    minHeight: 104,
+    padding: spacing.lg,
     shadowColor: colors.shadow,
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  statusDot: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.primary,
+    borderRadius: radii.pill,
+    marginRight: spacing.md,
+    width: 4,
+  },
+  pausedDot: {
+    backgroundColor: colors.warning,
+  },
+  completedDot: {
+    backgroundColor: colors.complete,
+  },
+  statusLabel: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  titleLine: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   title: {
     color: colors.text,
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '900',
   },
 });

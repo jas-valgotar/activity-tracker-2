@@ -5,7 +5,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ArrowDownUp, Check } from 'lucide-react-native';
 import type { ActivitySortMode } from '../domain/activityTypes';
 import { SORT_LABELS, SORT_MODES } from '../domain/sort';
-import { colors, spacing } from './theme';
+import { colors, radii, spacing } from './theme';
 
 type SortMenuProps = {
   value: ActivitySortMode;
@@ -31,7 +31,7 @@ export function SortMenu({ value, onChange }: SortMenuProps) {
         onPress={() => setIsOpen(true)}
         style={styles.iconButton}
       >
-        <ArrowDownUp color={colors.text} size={22} />
+        <ArrowDownUp color={colors.primaryDeep} size={20} strokeWidth={2.5} />
       </Pressable>
       <Modal animationType="fade" transparent visible={isOpen} onRequestClose={() => setIsOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setIsOpen(false)}>
@@ -55,18 +55,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.12)',
     flex: 1,
     paddingRight: spacing.lg,
-    paddingTop: 84,
+    paddingTop: 112,
   },
   iconButton: {
     alignItems: 'center',
-    height: 40,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    height: 44,
     justifyContent: 'center',
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
     width: 40,
   },
   menu: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.md,
     borderWidth: 1,
     minWidth: 180,
     overflow: 'hidden',

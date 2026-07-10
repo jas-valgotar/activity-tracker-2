@@ -2,12 +2,13 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ListTodo } from 'lucide-react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppData } from '../data/AppDataProvider';
 import type { ActivityFilter, ActivityWithLogs } from '../domain/activityTypes';
 import type { RootStackParamList } from '../navigation/types';
-import { colors, spacing } from './theme';
+import { colors, radii, spacing } from './theme';
 import { ActivityRow } from './ActivityRow';
 
 type ActivityListProps = {
@@ -134,24 +135,57 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
           onResume={handleResume}
         />
       )}
-      ListEmptyComponent={<Text style={styles.emptyText}>{emptyText}</Text>}
+      ListEmptyComponent={
+        <View style={styles.emptyState}>
+          <View style={styles.emptyIcon}>
+            <ListTodo color={colors.primary} size={28} strokeWidth={1.8} />
+          </View>
+          <Text style={styles.emptyTitle}>{emptyText}</Text>
+          <Text style={styles.emptyHint}>Your next focused session will show up here.</Text>
+        </View>
+      }
     />
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   emptyContent: {
     flexGrow: 1,
     justifyContent: 'center',
   },
-  emptyText: {
-    color: colors.muted,
+  emptyState: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    marginTop: spacing.xxl,
+    padding: spacing.xl,
+  },
+  emptyIcon: {
+    alignItems: 'center',
+    backgroundColor: colors.primarySoft,
+    borderRadius: radii.pill,
+    height: 56,
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+    width: 56,
+  },
+  emptyTitle: {
+    color: colors.text,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  emptyHint: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: spacing.xs,
     textAlign: 'center',
   },
   loading: {

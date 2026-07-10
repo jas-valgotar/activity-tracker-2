@@ -2,9 +2,17 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { PropsWithChildren } from 'react';
-import type { ActivityFilter, ActivitySortMode, ActivityWithLogs } from '../domain/activityTypes';
+import type {
+  ActivityFilter,
+  ActivityPreset,
+  ActivitySortMode,
+  ActivityWithLogs,
+  ProgressPeriod,
+  ProgressReport,
+} from '../domain/activityTypes';
 import { DEFAULT_SORT_MODE } from '../domain/sort';
 import { createActivityRepository, type ActivityRepository } from './activityRepository';
+import { createActivityPresetRepository, type ActivityPresetRepository } from './activityPresetRepository';
 import { getActivityDatabase } from './database';
 import { runMigrations } from './migrations';
 import { createSettingsRepository, type SettingsRepository } from './settingsRepository';
@@ -23,7 +31,12 @@ type AppDataContextValue = {
   setSortMode(sortMode: ActivitySortMode): Promise<void>;
   listActivities(filter: ActivityFilter): Promise<ActivityWithLogs[]>;
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
-  createActivity(title: string): Promise<void>;
+  createActivity(title: string, targetDurationMinutes?: number): Promise<void>;
+  listPresets(): Promise<ActivityPreset[]>;
+  createPreset(title: string, durationMinutes: number): Promise<void>;
+  updatePreset(id: string, title: string, durationMinutes: number): Promise<void>;
+  deletePreset(id: string): Promise<void>;
+  getProgressReport(period: ProgressPeriod): Promise<ProgressReport>;
   pauseActivity(id: string): Promise<void>;
   resumeActivity(id: string): Promise<void>;
   completeActivity(id: string): Promise<void>;
@@ -38,6 +51,7 @@ const AppDataContext = createContext<AppDataContextValue | null>(null);
 export function AppDataProvider({ children }: PropsWithChildren) {
   const repositoriesRef = useRef<{
     activities: ActivityRepository;
+    presets: ActivityPresetRepository;
     settings: SettingsRepository;
   } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,6 +68,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       const db = getActivityDatabase();
       await runMigrations(db);
       const activities = createActivityRepository(db);
+      const presets = createActivityPresetRepository(db);
       const settings = createSettingsRepository(db);
       const savedSortMode = await settings.getSortMode();
 
@@ -61,7 +76,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      repositoriesRef.current = { activities, settings };
+      repositoriesRef.current = { activities, presets, settings };
       setSortModeState(savedSortMode);
       setIsReady(true);
     }
@@ -122,12 +137,54 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
   // Creates a new activity from the home input.
   const createActivity = useCallback(
-    async (title: string) => {
+    async (title: string, targetDurationMinutes?: number) => {
       const { activities } = getRepositories();
-      await activities.createActivity(title);
+      await activities.createActivity(title, targetDurationMinutes);
       bumpActivityRevision();
     },
     [bumpActivityRevision, getRepositories],
+  );
+
+  // Loads the reusable daily activity presets.
+  const listPresets = useCallback(async () => {
+    const { presets } = getRepositories();
+    return presets.listPresets();
+  }, [getRepositories]);
+
+  // Creates a reusable daily activity preset.
+  const createPreset = useCallback(
+    async (title: string, durationMinutes: number) => {
+      const { presets } = getRepositories();
+      await presets.createPreset(title, durationMinutes);
+    },
+    [getRepositories],
+  );
+
+  // Updates a reusable daily activity preset.
+  const updatePreset = useCallback(
+    async (id: string, title: string, durationMinutes: number) => {
+      const { presets } = getRepositories();
+      await presets.updatePreset(id, title, durationMinutes);
+    },
+    [getRepositories],
+  );
+
+  // Deletes a reusable daily activity preset.
+  const deletePreset = useCallback(
+    async (id: string) => {
+      const { presets } = getRepositories();
+      await presets.deletePreset(id);
+    },
+    [getRepositories],
+  );
+
+  // Loads progress for the requested calendar period.
+  const getProgressReport = useCallback(
+    async (period: ProgressPeriod) => {
+      const { activities } = getRepositories();
+      return activities.getProgressReport(period);
+    },
+    [getRepositories],
   );
 
   // Pauses an active activity.
@@ -211,6 +268,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       listActivities,
       getActivityWithLogs,
       createActivity,
+      listPresets,
+      createPreset,
+      updatePreset,
+      deletePreset,
+      getProgressReport,
       pauseActivity,
       resumeActivity,
       completeActivity,
@@ -227,6 +289,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       listActivities,
       getActivityWithLogs,
       createActivity,
+      listPresets,
+      createPreset,
+      updatePreset,
+      deletePreset,
+      getProgressReport,
       pauseActivity,
       resumeActivity,
       completeActivity,

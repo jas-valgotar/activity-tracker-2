@@ -14,15 +14,15 @@ export function HomeScreen() {
 
   // Creates a new activity and lets the list reload through focus or manual refresh.
   const handleAddActivity = useCallback(
-    async (title: string) => {
-      await createActivity(title);
+    async (title: string, durationMinutes: number) => {
+      await createActivity(title, durationMinutes);
     },
     [createActivity],
   );
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Activities" />
+      <ScreenHeader title="Focus" subtitle="Keep the important things moving." />
       <ActivityList filter="home" emptyText="No Activity Started" />
       <ActivityInputBar onAdd={handleAddActivity} />
     </View>

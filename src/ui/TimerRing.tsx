@@ -8,6 +8,7 @@ import { colors } from './theme';
 
 type TimerRingProps = {
   elapsedMs: number;
+  targetDurationMinutes?: number;
   frozen?: boolean;
   blinkNextSpike?: boolean;
 };
@@ -64,11 +65,12 @@ function getSpikeLine(index: number): SpikeLine {
   return { x1: LABEL_LEFT, y1, x2: LABEL_LEFT, y2 };
 }
 
-// Draws a fixed-size 30-minute spiky rectangle sized for six compact characters plus padding.
-export function TimerRing({ elapsedMs, frozen = false, blinkNextSpike = false }: TimerRingProps) {
+// Draws a fixed-size 30-segment spiky rectangle that fills against the activity target.
+export function TimerRing({ elapsedMs, targetDurationMinutes = 60, frozen = false, blinkNextSpike = false }: TimerRingProps) {
   const elapsedLabel = formatDuration(elapsedMs);
   const highlightedSpikes = getHighlightedSpikeCount({
     elapsedMs,
+    targetDurationMinutes,
     showFullRingAtBoundary: frozen,
   });
   const nextSpikeIndex = blinkNextSpike && !frozen ? highlightedSpikes : null;

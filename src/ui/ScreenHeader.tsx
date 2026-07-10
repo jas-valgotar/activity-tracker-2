@@ -9,32 +9,56 @@ import { SortMenu } from './SortMenu';
 
 type ScreenHeaderProps = {
   title: string;
+  subtitle?: string;
+  showSort?: boolean;
 };
 
 // Shows a screen title with the shared activity sort selector on the right.
-export function ScreenHeader({ title }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, showSort = true }: ScreenHeaderProps) {
   const { sortMode, setSortMode } = useAppData();
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-      <Text style={styles.title}>{title}</Text>
-      <SortMenu value={sortMode} onChange={nextSortMode => setSortMode(nextSortMode)} />
+    <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
+      <View style={styles.copy}>
+        <Text style={styles.eyebrow}>ACTIVITY TRACKER</Text>
+        <Text style={styles.title}>{title}</Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      </View>
+      {showSort ? <SortMenu value={sortMode} onChange={nextSortMode => setSortMode(nextSortMode)} /> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: colors.background,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl,
+  },
+  copy: {
+    flex: 1,
+    gap: spacing.xs,
+    paddingRight: spacing.md,
+  },
+  eyebrow: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1.4,
   },
   title: {
     color: colors.text,
-    fontSize: 28,
+    fontSize: 34,
     fontWeight: '900',
+    letterSpacing: -0.8,
+  },
+  subtitle: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

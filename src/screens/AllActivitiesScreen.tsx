@@ -10,7 +10,7 @@ import { colors } from '../ui/theme';
 export function AllActivitiesScreen() {
   return (
     <View style={styles.container}>
-      <ScreenHeader title="All Activity" />
+      <ScreenHeader title="Everything" subtitle="Your complete activity history." />
       <ActivityList filter="all" emptyText="No Activity Started" />
     </View>
   );
