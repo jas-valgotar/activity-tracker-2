@@ -7,10 +7,11 @@ import { colors, radii, spacing } from './theme';
 
 type DailyStreakProps = {
   days: number;
+  bestDays: number;
 };
 
 // Renders a calm visual cue for consistency without competing with the active timer.
-export function DailyStreak({ days }: DailyStreakProps) {
+export function DailyStreak({ days, bestDays }: DailyStreakProps) {
   const label = days === 1 ? 'day' : 'days';
 
   return (
@@ -25,7 +26,10 @@ export function DailyStreak({ days }: DailyStreakProps) {
         <Text style={styles.eyebrow}>DAILY STREAK</Text>
         <Text style={styles.title}>{days} {label} completed</Text>
       </View>
-      <Text style={styles.prompt}>{days > 0 ? 'Keep it going' : 'Complete one today'}</Text>
+      <View style={styles.bestCopy}>
+        <Text style={styles.bestLabel}>BEST</Text>
+        <Text style={styles.bestValue}>{bestDays} days</Text>
+      </View>
     </View>
   );
 }
@@ -86,10 +90,20 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: spacing.xs,
   },
-  prompt: {
+  bestCopy: {
+  },
+  bestLabel: {
     color: colors.muted,
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textAlign: 'right',
+  },
+  bestValue: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: spacing.xs,
     textAlign: 'right',
   },
 });

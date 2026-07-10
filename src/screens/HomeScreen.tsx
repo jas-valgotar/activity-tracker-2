@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useAppData } from '../data/AppDataProvider';
-import { calculateDailyStreak } from '../domain/streak';
+import { calculateBestDailyStreak, calculateDailyStreak } from '../domain/streak';
 import { ActivityInputBar } from '../ui/ActivityInputBar';
 import { ActivityList } from '../ui/ActivityList';
 import { DailyStreak } from '../ui/DailyStreak';
@@ -14,13 +14,16 @@ import { colors } from '../ui/theme';
 // Shows active and paused activities and lets the user start a new activity.
 export function HomeScreen() {
   const { activityRevision, createActivity, listActivities, pauseCurrentAndCreateActivity } = useAppData();
-  const [dailyStreak, setDailyStreak] = useState(0);
+  const [streaks, setStreaks] = useState({ current: 0, best: 0 });
   const isFocused = useIsFocused();
 
   // Loads the streak from all non-deleted activity history whenever Focus becomes visible or changes.
   const loadDailyStreak = useCallback(async () => {
     const activities = await listActivities('all');
-    setDailyStreak(calculateDailyStreak(activities));
+    setStreaks({
+      current: calculateDailyStreak(activities),
+      best: calculateBestDailyStreak(activities),
+    });
   }, [listActivities]);
 
   useEffect(() => {
@@ -49,9 +52,9 @@ export function HomeScreen() {
     >
       <View style={styles.container}>
         <ScreenHeader title="Focus" subtitle="Keep the important things moving." />
-        <DailyStreak days={dailyStreak} />
+        <DailyStreak bestDays={streaks.best} days={streaks.current} />
         <ActivityList filter="home" emptyText="No Activity Started" />
-      <ActivityInputBar onAdd={handleAddActivity} onPauseCurrentAndStart={pauseCurrentAndCreateActivity} />
+        <ActivityInputBar onAdd={handleAddActivity} onPauseCurrentAndStart={pauseCurrentAndCreateActivity} />
       </View>
     </KeyboardAvoidingView>
   );
