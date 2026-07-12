@@ -6,7 +6,6 @@
 
 static NSString *const ActivityTargetNotificationType = @"activity-target-reached";
 static NSString *const ActivityPauseReminderType = @"activity-pause-reminder";
-static NSString *const ActivityStreakMilestoneType = @"activity-streak-milestone";
 static NSString *const ActivityPresetReminderType = @"activity-preset-reminder";
 static NSString *const ActivityFocusNotificationCategory = @"activity-focus-notification";
 
@@ -122,36 +121,6 @@ RCT_REMAP_METHOD(schedulePauseReminder,
   }];
 }
 
-// Presents an immediate celebration when a new all-time streak milestone is reached.
-RCT_REMAP_METHOD(scheduleStreakCelebration,
-                 scheduleStreakCelebration:(nonnull NSNumber *)days
-                 resolver:(RCTPromiseResolveBlock)resolve
-                 rejecter:(RCTPromiseRejectBlock)reject)
-{
-  UNMutableNotificationContent *content = [UNMutableNotificationContent new];
-  content.title = @"Streak milestone unlocked";
-  content.body = [NSString stringWithFormat:@"%ld-day streak! Keep your focus momentum going.", (long)days.integerValue];
-  content.categoryIdentifier = ActivityFocusNotificationCategory;
-  content.sound = [UNNotificationSound defaultSound];
-  content.userInfo = @{
-    @"days": days,
-    @"type": ActivityStreakMilestoneType,
-  };
-
-  UNTimeIntervalNotificationTrigger *trigger = [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:1.0 repeats:NO];
-  NSString *identifier = [NSString stringWithFormat:@"activity-streak-milestone-%ld", (long)days.integerValue];
-  UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:identifier content:content trigger:trigger];
-
-  [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:request
-                                                           withCompletionHandler:^(NSError *_Nullable error) {
-    if (error) {
-      reject(@"activity_notifications_streak", @"Streak celebration could not be scheduled.", error);
-      return;
-    }
-    resolve(nil);
-  }];
-}
-
 // Schedules a repeating daily reminder for a Daily preset at the user's local time.
 RCT_REMAP_METHOD(schedulePresetReminder,
                  schedulePresetReminder:(NSString *)presetId
@@ -222,7 +191,7 @@ RCT_EXPORT_METHOD(cancelPresetReminder:(NSString *)presetId)
          withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler
 {
   NSString *notificationType = notification.request.content.userInfo[@"type"];
-  if ([notificationType isEqual:ActivityTargetNotificationType] || [notificationType isEqual:ActivityStreakMilestoneType]) {
+  if ([notificationType isEqual:ActivityTargetNotificationType]) {
     AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
   }
   completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound |

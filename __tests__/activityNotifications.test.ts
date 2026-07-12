@@ -6,7 +6,6 @@ const notificationManager = {
   requestPermission: jest.fn<Promise<boolean>, []>(),
   scheduleTargetNotification: jest.fn<Promise<void>, [string, string, number]>(),
   schedulePauseReminder: jest.fn<Promise<void>, [string, string, number]>(),
-  scheduleStreakCelebration: jest.fn<Promise<void>, [number]>(),
   schedulePresetReminder: jest.fn<Promise<void>, [string, string, number]>(),
   cancelTargetNotification: jest.fn<void, [string]>(),
   cancelPauseReminder: jest.fn<void, [string]>(),
@@ -39,7 +38,6 @@ describe('activity target notifications', () => {
     notificationManager.requestPermission.mockResolvedValue(true);
     notificationManager.scheduleTargetNotification.mockResolvedValue(undefined);
     notificationManager.schedulePauseReminder.mockResolvedValue(undefined);
-    notificationManager.scheduleStreakCelebration.mockResolvedValue(undefined);
     notificationManager.schedulePresetReminder.mockResolvedValue(undefined);
     jest.doMock('react-native', () => {
       return {
@@ -103,17 +101,6 @@ describe('activity target notifications', () => {
 
     expect(notificationManager.cancelTargetNotification).toHaveBeenCalledWith('activity-1');
     expect(notificationManager.scheduleTargetNotification).not.toHaveBeenCalled();
-  });
-
-  it('celebrates meaningful all-time streak milestones without notifying on every day', async () => {
-    expect(notificationService.isStreakMilestone(7)).toBe(true);
-    expect(notificationService.isStreakMilestone(8)).toBe(false);
-
-    await notificationService.scheduleStreakCelebrationNotification(7);
-    await notificationService.scheduleStreakCelebrationNotification(8);
-
-    expect(notificationManager.scheduleStreakCelebration).toHaveBeenCalledTimes(1);
-    expect(notificationManager.scheduleStreakCelebration).toHaveBeenCalledWith(7);
   });
 
   it('schedules an optional repeating reminder for a Daily preset', async () => {

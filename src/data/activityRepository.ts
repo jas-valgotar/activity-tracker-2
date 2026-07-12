@@ -39,13 +39,13 @@ type DbEventRow = {
 export type ActivityRepository = {
   createActivity(title: string, targetDurationMinutes?: number): Promise<ActivityWithLogs>;
   pauseCurrentAndCreateActivity(title: string, targetDurationMinutes?: number): Promise<ActivityStartResult>;
-  pauseCurrentAndResumeActivity(id: string): Promise<ActivityStartResult>;
+  pauseCurrentAndResumeActivity(id: string, occurredAt?: number): Promise<ActivityStartResult>;
   listActivities(filter: ActivityFilter, sortMode: ActivitySortMode): Promise<ActivityWithLogs[]>;
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
   getActivityProgressReport(id: string, period: ProgressPeriod, now?: number): Promise<ProgressReport>;
-  pauseActivity(id: string): Promise<void>;
-  resumeActivity(id: string): Promise<void>;
-  completeActivity(id: string): Promise<void>;
+  pauseActivity(id: string, occurredAt?: number): Promise<void>;
+  resumeActivity(id: string, occurredAt?: number): Promise<void>;
+  completeActivity(id: string, occurredAt?: number): Promise<void>;
   softDeleteActivity(id: string): Promise<void>;
   restoreActivity(id: string): Promise<void>;
 };
@@ -164,7 +164,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
     },
 
     // Pauses the current active activity and resumes the requested paused activity atomically.
-    async pauseCurrentAndResumeActivity(id) {
+    async pauseCurrentAndResumeActivity(id, occurredAt = Date.now()) {
       const target = await getActivityRow(id);
       if (!target || target.deleted_at !== null || target.status !== 'paused') {
         throw new Error('Only paused activities can be resumed.');
@@ -174,7 +174,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
         "SELECT id FROM activities WHERE status = 'active' AND deleted_at IS NULL LIMIT 1",
       );
       const pausedActivityId = (activeResult.rows[0] as { id?: string } | undefined)?.id ?? null;
-      const now = Date.now();
+      const now = occurredAt;
       const commands: Array<[string, Array<string | number | null>]> = [];
 
       if (pausedActivityId) {
@@ -252,13 +252,13 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
     },
 
     // Pauses an active activity and records the pause event.
-    async pauseActivity(id) {
+    async pauseActivity(id, occurredAt = Date.now()) {
       const activity = await getActivityRow(id);
       if (!activity || activity.deleted_at !== null || activity.status !== 'active') {
         return;
       }
 
-      const now = Date.now();
+      const now = occurredAt;
       await db.executeBatch([
         ['UPDATE activities SET status = ?, last_accessed_at = ? WHERE id = ?', ['paused', now, id]],
         ['INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)', [createId(), id, 'paused', now]],
@@ -266,14 +266,14 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
     },
 
     // Resumes a paused activity and records the resume event.
-    async resumeActivity(id) {
+    async resumeActivity(id, occurredAt = Date.now()) {
       const activity = await getActivityRow(id);
       if (!activity || activity.deleted_at !== null || activity.status !== 'paused') {
         return;
       }
       await ensureNoOtherActiveActivity(id);
 
-      const now = Date.now();
+      const now = occurredAt;
       await db.executeBatch([
         ['UPDATE activities SET status = ?, last_accessed_at = ? WHERE id = ?', ['active', now, id]],
         ['INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)', [createId(), id, 'resumed', now]],
@@ -281,13 +281,13 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
     },
 
     // Marks an activity complete and freezes its elapsed time at completion.
-    async completeActivity(id) {
+    async completeActivity(id, occurredAt = Date.now()) {
       const activity = await getActivityRow(id);
       if (!activity || activity.deleted_at !== null || activity.status === 'completed') {
         return;
       }
 
-      const now = Date.now();
+      const now = occurredAt;
       await db.executeBatch([
         ['UPDATE activities SET status = ?, completed_at = ?, last_accessed_at = ? WHERE id = ?', ['completed', now, now, id]],
         ['INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)', [createId(), id, 'completed', now]],

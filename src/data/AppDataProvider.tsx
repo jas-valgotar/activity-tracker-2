@@ -1,6 +1,7 @@
 // Overview: Initializes repositories and exposes activity actions, settings, and undo state to the UI.
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import type { PropsWithChildren } from 'react';
 import type {
   ActivityFilter,
@@ -11,7 +12,7 @@ import type {
   ProgressReport,
 } from '../domain/activityTypes';
 import { DEFAULT_SORT_MODE } from '../domain/sort';
-import { calculateAllTimeStreak } from '../domain/streak';
+import { calculateActiveElapsedMs } from '../domain/time';
 import { createActivityRepository, type ActivityRepository } from './activityRepository';
 import { createActivityPresetRepository, type ActivityPresetRepository } from './activityPresetRepository';
 import { getActivityDatabase } from './database';
@@ -24,9 +25,16 @@ import {
   configureActivityNotifications,
   scheduleActivityPauseReminder,
   schedulePresetReminder,
-  scheduleStreakCelebrationNotification,
   scheduleActivityTargetNotification,
 } from '../services/activityNotifications';
+import {
+  acknowledgeLiveActivityCommands,
+  consumeLiveActivityCommands,
+  endLiveActivity,
+  getCurrentLiveActivityId,
+  startOrUpdateLiveActivity,
+  type LiveActivityCommand,
+} from '../services/activityLiveActivity';
 
 type UndoState = {
   activityId: string;
@@ -73,6 +81,37 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const [activityRevision, setActivityRevision] = useState(0);
   const [pendingUndo, setPendingUndo] = useState<UndoState | null>(null);
 
+  // Mirrors one activity into the native Live Activity without allowing native presentation failures to block SQLite writes.
+  const syncLiveActivityForActivity = useCallback(async (activity: ActivityWithLogs | null) => {
+    try {
+      if (!activity || activity.status === 'completed') {
+        if (activity) {
+          await endLiveActivity(activity.id);
+        } else {
+          const currentActivityId = await getCurrentLiveActivityId();
+          if (currentActivityId) {
+            await endLiveActivity(currentActivityId);
+          }
+        }
+        return;
+      }
+
+      const elapsedMilliseconds = calculateActiveElapsedMs({
+        events: activity.events,
+        status: activity.status,
+      });
+      await startOrUpdateLiveActivity({
+        activityId: activity.id,
+        title: activity.title,
+        targetDurationMinutes: activity.targetDurationMinutes,
+        status: activity.status,
+        elapsedMilliseconds,
+      });
+    } catch (error) {
+      console.warn('Live Activity is unavailable', error);
+    }
+  }, []);
+
   // Boots SQLite, runs migrations, creates repositories, and restores settings.
   useEffect(() => {
     let isMounted = true;
@@ -91,7 +130,6 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
       repositoriesRef.current = { activities, presets, settings };
       setSortModeState(savedSortMode);
-      setIsReady(true);
       configureActivityNotifications();
 
       const storedPresets = await presets.listPresets();
@@ -99,11 +137,20 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         schedulePresetReminder(preset).catch(() => undefined);
       });
 
-      const activeActivity = (await activities.listActivities('all', DEFAULT_SORT_MODE)).find(
-        activity => activity.status === 'active',
-      );
+      const allActivities = await activities.listActivities('all', DEFAULT_SORT_MODE);
+      const activeActivity = allActivities.find(activity => activity.status === 'active');
       if (activeActivity) {
         scheduleActivityTargetNotification(activeActivity).catch(() => undefined);
+      }
+
+      const currentLiveActivityId = await getCurrentLiveActivityId();
+      const trackedActivity = currentLiveActivityId
+        ? allActivities.find(activity => activity.id === currentLiveActivityId) ?? null
+        : null;
+      await syncLiveActivityForActivity(trackedActivity ?? activeActivity ?? null);
+
+      if (isMounted) {
+        setIsReady(true);
       }
     }
 
@@ -117,7 +164,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         clearTimeout(undoTimerRef.current);
       }
     };
-  }, []);
+  }, [syncLiveActivityForActivity]);
 
   // Returns initialized repositories or throws if a screen calls too early.
   const getRepositories = useCallback(() => {
@@ -132,6 +179,81 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const bumpActivityRevision = useCallback(() => {
     setActivityRevision(currentRevision => currentRevision + 1);
   }, []);
+
+  // Applies native Lock Screen commands in order and keeps failed commands queued for a later foreground attempt.
+  const processPendingLiveActivityCommands = useCallback(async () => {
+    let commands: LiveActivityCommand[];
+    try {
+      commands = await consumeLiveActivityCommands();
+    } catch (error) {
+      console.warn('Could not read Live Activity commands', error);
+      return;
+    }
+
+    for (const command of commands) {
+      try {
+        const { activities } = getRepositories();
+        if (command.action === 'pause') {
+          await activities.pauseActivity(command.activityId, command.occurredAt);
+          cancelActivityTargetNotification(command.activityId);
+          const pausedActivity = await activities.getActivityWithLogs(command.activityId);
+          if (pausedActivity) {
+            scheduleActivityPauseReminder(pausedActivity).catch(() => undefined);
+            await syncLiveActivityForActivity(pausedActivity);
+          }
+        } else if (command.action === 'resume') {
+          const currentActivity = await activities.getActivityWithLogs(command.activityId);
+          if (currentActivity?.status === 'paused') {
+            const result = await activities.pauseCurrentAndResumeActivity(command.activityId, command.occurredAt);
+            if (result.pausedActivityId) {
+              cancelActivityTargetNotification(result.pausedActivityId);
+            }
+            cancelActivityPauseReminder(command.activityId);
+            scheduleActivityTargetNotification(result.activity).catch(() => undefined);
+            await syncLiveActivityForActivity(result.activity);
+          } else if (currentActivity?.status === 'active') {
+            await syncLiveActivityForActivity(currentActivity);
+          }
+        } else {
+          await activities.completeActivity(command.activityId, command.occurredAt);
+          cancelActivityTargetNotification(command.activityId);
+          cancelActivityPauseReminder(command.activityId);
+          try {
+            await endLiveActivity(command.activityId);
+          } catch (endError) {
+            console.warn('Could not end Live Activity after command', endError);
+          }
+        }
+
+        bumpActivityRevision();
+        await acknowledgeLiveActivityCommands([command.commandId]);
+      } catch (error) {
+        console.warn('Could not apply Live Activity command', command.action, error);
+        break;
+      }
+    }
+  }, [bumpActivityRevision, getRepositories, syncLiveActivityForActivity]);
+
+  // Replays Lock Screen actions whenever the app becomes active after the widget handled them in the background.
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
+    processPendingLiveActivityCommands().catch(error => {
+      console.warn('Could not process Live Activity commands', error);
+    });
+
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') {
+        processPendingLiveActivityCommands().catch(error => {
+          console.warn('Could not process Live Activity commands', error);
+        });
+      }
+    });
+
+    return () => subscription.remove();
+  }, [isReady, processPendingLiveActivityCommands]);
 
   // Saves a new sort mode and updates all screens that depend on it.
   const setSortMode = useCallback(
@@ -167,9 +289,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       const { activities } = getRepositories();
       const activity = await activities.createActivity(title, targetDurationMinutes);
       scheduleActivityTargetNotification(activity).catch(() => undefined);
+      await syncLiveActivityForActivity(activity);
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories],
+    [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
   );
 
   // Pauses the current focus and starts a new activity after the user confirms the switch.
@@ -181,9 +304,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         cancelActivityTargetNotification(result.pausedActivityId);
       }
       scheduleActivityTargetNotification(result.activity).catch(() => undefined);
+      await syncLiveActivityForActivity(result.activity);
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories],
+    [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
   );
 
   // Pauses the current focus and resumes a selected paused activity after the user confirms a switch.
@@ -196,9 +320,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       }
       cancelActivityPauseReminder(id);
       scheduleActivityTargetNotification(result.activity).catch(() => undefined);
+      await syncLiveActivityForActivity(result.activity);
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories],
+    [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
   );
 
   // Loads the reusable daily activity presets.
@@ -263,10 +388,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       const pausedActivity = await activities.getActivityWithLogs(id);
       if (pausedActivity) {
         scheduleActivityPauseReminder(pausedActivity).catch(() => undefined);
+        await syncLiveActivityForActivity(pausedActivity);
       }
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories],
+    [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
   );
 
   // Resumes a paused activity.
@@ -278,29 +404,28 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       const activity = await activities.getActivityWithLogs(id);
       if (activity) {
         scheduleActivityTargetNotification(activity).catch(() => undefined);
+        await syncLiveActivityForActivity(activity);
       }
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories],
+    [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
   );
 
   // Completes an active or paused activity.
   const completeActivity = useCallback(
     async (id: string) => {
       const { activities } = getRepositories();
-      const beforeActivities = await activities.listActivities('all', sortModeState);
-      const previousAllTimeStreak = calculateAllTimeStreak(beforeActivities);
       await activities.completeActivity(id);
       cancelActivityTargetNotification(id);
       cancelActivityPauseReminder(id);
-      const afterActivities = await activities.listActivities('all', sortModeState);
-      const allTimeStreak = calculateAllTimeStreak(afterActivities);
-      if (allTimeStreak > previousAllTimeStreak) {
-        scheduleStreakCelebrationNotification(allTimeStreak).catch(() => undefined);
+      try {
+        await endLiveActivity(id);
+      } catch (error) {
+        console.warn('Could not end Live Activity', error);
       }
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories, sortModeState],
+    [bumpActivityRevision, getRepositories],
   );
 
   // Clears any pending delete undo state and timer.
@@ -319,6 +444,11 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       await activities.softDeleteActivity(activity.id);
       cancelActivityTargetNotification(activity.id);
       cancelActivityPauseReminder(activity.id);
+      try {
+        await endLiveActivity(activity.id);
+      } catch (error) {
+        console.warn('Could not end Live Activity', error);
+      }
       clearUndo();
       setPendingUndo({
         activityId: activity.id,
@@ -343,12 +473,15 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     const { activities } = getRepositories();
     await activities.restoreActivity(pendingUndo.activityId);
     const restoredActivity = await activities.getActivityWithLogs(pendingUndo.activityId);
-    if (restoredActivity?.status === 'active') {
-      scheduleActivityTargetNotification(restoredActivity).catch(() => undefined);
+    if (restoredActivity && restoredActivity.status !== 'completed') {
+      if (restoredActivity.status === 'active') {
+        scheduleActivityTargetNotification(restoredActivity).catch(() => undefined);
+      }
+      await syncLiveActivityForActivity(restoredActivity);
     }
     clearUndo();
     bumpActivityRevision();
-  }, [bumpActivityRevision, clearUndo, getRepositories, pendingUndo]);
+  }, [bumpActivityRevision, clearUndo, getRepositories, pendingUndo, syncLiveActivityForActivity]);
 
   const value = useMemo<AppDataContextValue>(
     () => ({

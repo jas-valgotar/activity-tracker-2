@@ -10,12 +10,45 @@
 		0C80B921A6F3F58F76C31292 /* libPods-ActivityTracker.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-ActivityTracker.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
-		A200000000000001 /* ActivityNotificationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A200000000000002 /* ActivityNotificationManager.m */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		A10000000000000000000001 /* ActivitySpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* ActivitySpeechRecognizer.swift */; };
 		A10000000000000000000003 /* ActivitySpeechRecognizerBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* ActivitySpeechRecognizerBridge.m */; };
+		A200000000000001 /* ActivityNotificationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A200000000000002 /* ActivityNotificationManager.m */; };
+		B100000000000001 /* ActivityLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000001 /* ActivityLiveActivityAttributes.swift */; };
+		B100000000000002 /* ActivityLiveActivityCommandStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000002 /* ActivityLiveActivityCommandStore.swift */; };
+		B100000000000003 /* ActivityLiveActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000003 /* ActivityLiveActivityIntents.swift */; };
+		B100000000000004 /* ActivityLiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000004 /* ActivityLiveActivityManager.swift */; };
+		B100000000000005 /* ActivityLiveActivityManagerBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000005 /* ActivityLiveActivityManagerBridge.m */; };
+		B100000000000006 /* ActivityLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000001 /* ActivityLiveActivityAttributes.swift */; };
+		B100000000000007 /* ActivityLiveActivityCommandStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000002 /* ActivityLiveActivityCommandStore.swift */; };
+		B100000000000008 /* ActivityLiveActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000003 /* ActivityLiveActivityIntents.swift */; };
+		B100000000000009 /* ActivityTrackerLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000006 /* ActivityTrackerLiveActivity.swift */; };
+		B100000000000010 /* ActivityTrackerLiveActivity.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = B200000000000008 /* ActivityTrackerLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E5737DE2C23F15ABDCF74D7E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B600000000000004 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B400000000000001;
+			remoteInfo = ActivityTrackerLiveActivity;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B600000000000001 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B100000000000010 /* ActivityTrackerLiveActivity.appex in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* ActivityTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ActivityTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -30,6 +63,15 @@
 		A10000000000000000000002 /* ActivitySpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivitySpeechRecognizer.swift; path = ActivityTracker/ActivitySpeechRecognizer.swift; sourceTree = "<group>"; };
 		A10000000000000000000004 /* ActivitySpeechRecognizerBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ActivitySpeechRecognizerBridge.m; path = ActivityTracker/ActivitySpeechRecognizerBridge.m; sourceTree = "<group>"; };
 		A200000000000002 /* ActivityNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ActivityNotificationManager.m; path = ActivityTracker/ActivityNotificationManager.m; sourceTree = "<group>"; };
+		B200000000000001 /* ActivityLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityLiveActivityAttributes.swift; path = ActivityTracker/ActivityLiveActivityAttributes.swift; sourceTree = "<group>"; };
+		B200000000000002 /* ActivityLiveActivityCommandStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityLiveActivityCommandStore.swift; path = ActivityTracker/ActivityLiveActivityCommandStore.swift; sourceTree = "<group>"; };
+		B200000000000003 /* ActivityLiveActivityIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityLiveActivityIntents.swift; path = ActivityTracker/ActivityLiveActivityIntents.swift; sourceTree = "<group>"; };
+		B200000000000004 /* ActivityLiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityLiveActivityManager.swift; path = ActivityTracker/ActivityLiveActivityManager.swift; sourceTree = "<group>"; };
+		B200000000000005 /* ActivityLiveActivityManagerBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ActivityLiveActivityManagerBridge.m; path = ActivityTracker/ActivityLiveActivityManagerBridge.m; sourceTree = "<group>"; };
+		B200000000000006 /* ActivityTrackerLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityTrackerLiveActivity.swift; path = ActivityTrackerLiveActivity.swift; sourceTree = "<group>"; };
+		B200000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = Info.plist; sourceTree = "<group>"; };
+		B200000000000008 /* ActivityTrackerLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ActivityTrackerLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B200000000000009 /* ActivityTracker-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ActivityTracker-Bridging-Header.h; path = ActivityTracker/ActivityTracker-Bridging-Header.h; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -42,6 +84,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B500000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -51,6 +100,12 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				A200000000000002 /* ActivityNotificationManager.m */,
+				B200000000000001 /* ActivityLiveActivityAttributes.swift */,
+				B200000000000002 /* ActivityLiveActivityCommandStore.swift */,
+				B200000000000003 /* ActivityLiveActivityIntents.swift */,
+				B200000000000004 /* ActivityLiveActivityManager.swift */,
+				B200000000000005 /* ActivityLiveActivityManagerBridge.m */,
+				B200000000000009 /* ActivityTracker-Bridging-Header.h */,
 				A10000000000000000000002 /* ActivitySpeechRecognizer.swift */,
 				A10000000000000000000004 /* ActivitySpeechRecognizerBridge.m */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
@@ -80,6 +135,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07FAE1A68108700A75B9A /* ActivityTracker */,
+				B300000000000001 /* ActivityTrackerLiveActivity */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
@@ -94,8 +150,19 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* ActivityTracker.app */,
+				B200000000000008 /* ActivityTrackerLiveActivity.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B300000000000001 /* ActivityTrackerLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				B200000000000006 /* ActivityTrackerLiveActivity.swift */,
+				B200000000000007 /* Info.plist */,
+			);
+			name = ActivityTrackerLiveActivity;
+			path = ActivityTrackerLiveActivity;
 			sourceTree = "<group>";
 		};
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
@@ -118,6 +185,7 @@
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
+				B600000000000001 /* CopyFiles */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
@@ -125,11 +193,29 @@
 			buildRules = (
 			);
 			dependencies = (
+				B600000000000003 /* PBXTargetDependency */,
 			);
 			name = ActivityTracker;
 			productName = ActivityTracker;
 			productReference = 13B07F961A680F5B00A75B9A /* ActivityTracker.app */;
 			productType = "com.apple.product-type.application";
+		};
+		B400000000000001 /* ActivityTrackerLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B500000000000005 /* Build configuration list for PBXNativeTarget "ActivityTrackerLiveActivity" */;
+			buildPhases = (
+				B500000000000001 /* Sources */,
+				B500000000000002 /* Frameworks */,
+				B500000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ActivityTrackerLiveActivity;
+			productName = ActivityTrackerLiveActivity;
+			productReference = B200000000000008 /* ActivityTrackerLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -158,6 +244,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* ActivityTracker */,
+				B400000000000001 /* ActivityTrackerLiveActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -170,6 +257,13 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				E5737DE2C23F15ABDCF74D7E /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B500000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -200,13 +294,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ActivityTracker/Pods-ActivityTracker-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ActivityTracker/Pods-ActivityTracker-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -243,13 +333,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ActivityTracker/Pods-ActivityTracker-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-ActivityTracker/Pods-ActivityTracker-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -265,12 +351,36 @@
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A200000000000001 /* ActivityNotificationManager.m in Sources */,
+				B100000000000001 /* ActivityLiveActivityAttributes.swift in Sources */,
+				B100000000000002 /* ActivityLiveActivityCommandStore.swift in Sources */,
+				B100000000000003 /* ActivityLiveActivityIntents.swift in Sources */,
+				B100000000000004 /* ActivityLiveActivityManager.swift in Sources */,
+				B100000000000005 /* ActivityLiveActivityManagerBridge.m in Sources */,
 				A10000000000000000000001 /* ActivitySpeechRecognizer.swift in Sources */,
 				A10000000000000000000003 /* ActivitySpeechRecognizerBridge.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B500000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B100000000000006 /* ActivityLiveActivityAttributes.swift in Sources */,
+				B100000000000007 /* ActivityLiveActivityCommandStore.swift in Sources */,
+				B100000000000008 /* ActivityLiveActivityIntents.swift in Sources */,
+				B100000000000009 /* ActivityTrackerLiveActivity.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B600000000000003 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B400000000000001 /* ActivityTrackerLiveActivity */;
+			targetProxy = B600000000000004 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
@@ -283,7 +393,8 @@
 				DEVELOPMENT_TEAM = GT98X3Y5PH;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = ActivityTracker/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SWIFT_OBJC_BRIDGING_HEADER = ActivityTracker/ActivityTracker-Bridging-Header.h;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -313,7 +424,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GT98X3Y5PH;
 				INFOPLIST_FILE = ActivityTracker/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SWIFT_OBJC_BRIDGING_HEADER = ActivityTracker/ActivityTracker-Bridging-Header.h;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -382,7 +494,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",
@@ -458,7 +570,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",
@@ -491,6 +603,53 @@
 			};
 			name = Release;
 		};
+		B500000000000006 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GT98X3Y5PH;
+				INFOPLIST_FILE = ActivityTrackerLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jas.activitytracker2.LiveActivity;
+				PRODUCT_NAME = ActivityTrackerLiveActivity;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B500000000000007 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GT98X3Y5PH;
+				INFOPLIST_FILE = ActivityTrackerLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jas.activitytracker2.LiveActivity;
+				PRODUCT_NAME = ActivityTrackerLiveActivity;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -508,6 +667,15 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B500000000000005 /* Build configuration list for PBXNativeTarget "ActivityTrackerLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B500000000000006 /* Debug */,
+				B500000000000007 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

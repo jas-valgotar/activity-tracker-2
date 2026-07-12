@@ -9,7 +9,6 @@ type ActivityNotificationManager = {
   requestPermission(): Promise<boolean>;
   scheduleTargetNotification(activityId: string, title: string, delaySeconds: number): Promise<void>;
   schedulePauseReminder(activityId: string, title: string, delaySeconds: number): Promise<void>;
-  scheduleStreakCelebration(days: number): Promise<void>;
   schedulePresetReminder(presetId: string, title: string, reminderTimeMinutes: number): Promise<void>;
   cancelTargetNotification(activityId: string): void;
   cancelPauseReminder(activityId: string): void;
@@ -17,7 +16,6 @@ type ActivityNotificationManager = {
 };
 
 const PAUSE_REMINDER_DELAY_SECONDS = 30 * 60;
-const STREAK_MILESTONES = [2, 3, 5, 7, 14, 21, 30, 60, 90, 100];
 let permissionPromise: Promise<unknown> | null = null;
 const notificationManager = NativeModules.ActivityNotificationManager as ActivityNotificationManager | undefined;
 
@@ -136,29 +134,6 @@ export async function schedulePresetReminder(preset: ActivityPreset): Promise<vo
 // Cancels a repeating Daily preset reminder.
 export function cancelPresetReminder(presetId: string): void {
   notificationManager?.cancelPresetReminder(presetId);
-}
-
-// Returns whether a new all-time streak is worth celebrating without creating daily notification noise.
-export function isStreakMilestone(days: number): boolean {
-  return STREAK_MILESTONES.includes(days);
-}
-
-// Shows a short celebration only when the user reaches a meaningful all-time streak milestone.
-export async function scheduleStreakCelebrationNotification(days: number): Promise<void> {
-  if (!isStreakMilestone(days)) {
-    return;
-  }
-
-  try {
-    await ensureNotificationPermission();
-    if (!notificationManager) {
-      return;
-    }
-
-    await notificationManager.scheduleStreakCelebration(days);
-  } catch (error) {
-    console.warn('Could not schedule streak celebration', error);
-  }
 }
 
 // Formats notification copy without coupling this service to UI formatting helpers.

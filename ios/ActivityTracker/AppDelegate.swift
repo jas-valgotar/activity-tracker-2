@@ -31,6 +31,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     return true
   }
+
+  // Forwards Live Activity deep links to React Native so React Navigation can open the matching detail route.
+  func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey : Any] = [:]
+  ) -> Bool {
+    RCTLinkingManager.application(app, open: url, options: options)
+  }
 }
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {

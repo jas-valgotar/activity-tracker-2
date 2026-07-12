@@ -13,7 +13,17 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // Renders app navigation with a stack detail screen over the main pager.
 export function RootNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      linking={{
+        prefixes: ['activitytracker://'],
+        config: {
+          screens: {
+            MainTabs: '',
+            ActivityDetail: 'activity/:activityId',
+          },
+        },
+      }}
+    >
       <Stack.Navigator
         screenOptions={{
           contentStyle: { backgroundColor: colors.background },

@@ -206,6 +206,23 @@ describe('activity repository', () => {
     expect(completed?.events.map(event => event.type)).toEqual(['started', 'paused', 'resumed', 'completed']);
   });
 
+  it('preserves the original Lock Screen command timestamp for lifecycle events', async () => {
+    const { activities } = await createRepositories();
+    const created = await activities.createActivity('Lock Screen focus');
+
+    await activities.pauseActivity(created.id, 20_000);
+    await activities.resumeActivity(created.id, 40_000);
+    await activities.completeActivity(created.id, 60_000);
+
+    const completed = await activities.getActivityWithLogs(created.id);
+    expect(completed?.events.map(event => [event.type, event.occurredAt])).toEqual([
+      ['started', 1_000],
+      ['paused', 20_000],
+      ['resumed', 40_000],
+      ['completed', 60_000],
+    ]);
+  });
+
   it('does not record duplicate logs for invalid lifecycle transitions', async () => {
     const { activities } = await createRepositories();
     const created = await activities.createActivity('Avoid duplicate logs');
