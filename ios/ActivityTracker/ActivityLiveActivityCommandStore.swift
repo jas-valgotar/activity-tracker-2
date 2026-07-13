@@ -10,6 +10,7 @@ struct ActivityLiveActivityCommand: Codable, Hashable {
 }
 
 enum ActivityLiveActivityCommandStore {
+  private static let appGroupIdentifier = "group.com.jas.activitytracker2"
   private static let defaultsKey = "activity-tracker.live-activity.commands"
   private static let lock = NSLock()
 
@@ -48,7 +49,7 @@ enum ActivityLiveActivityCommandStore {
   }
 
   private static func readCommands() -> [ActivityLiveActivityCommand] {
-    guard let data = UserDefaults.standard.data(forKey: defaultsKey) else {
+    guard let data = sharedDefaults?.data(forKey: defaultsKey) else {
       return []
     }
 
@@ -60,6 +61,11 @@ enum ActivityLiveActivityCommandStore {
       return
     }
 
-    UserDefaults.standard.set(data, forKey: defaultsKey)
+    sharedDefaults?.set(data, forKey: defaultsKey)
+  }
+
+  // Uses the suite shared by the app and widget extension so Lock Screen actions reach SQLite on the next app activation.
+  private static var sharedDefaults: UserDefaults? {
+    UserDefaults(suiteName: appGroupIdentifier)
   }
 }

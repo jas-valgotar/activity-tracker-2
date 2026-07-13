@@ -1,6 +1,7 @@
 // Overview: Renders the Lock Screen and Dynamic Island presentation for the current focus activity.
 
 import ActivityKit
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -70,26 +71,57 @@ private struct ActivityLockScreenView: View {
       }
 
       ActivityProgressView(context: context)
-
-      HStack(spacing: 10) {
-        if context.state.status == .active {
-          Button(intent: PauseActivityIntent(activityId: context.attributes.activityId)) {
-            Label("Pause", systemImage: "pause.fill")
-          }
-        } else {
-          Button(intent: ResumeActivityIntent(activityId: context.attributes.activityId)) {
-            Label("Resume", systemImage: "play.fill")
-          }
-        }
-        Button(intent: CompleteActivityIntent(activityId: context.attributes.activityId)) {
-          Label("Stop", systemImage: "stop.fill")
-        }
-        .tint(.red)
-      }
-      .buttonStyle(.bordered)
-      .font(.caption.weight(.bold))
     }
     .padding(16)
+  }
+}
+
+// Places the essential actions beside progress rather than allocating a separate Lock Screen row.
+private struct ActivityProgressControls: View {
+  let context: ActivityViewContext<ActivityLiveActivityAttributes>
+
+  var body: some View {
+    HStack(spacing: 8) {
+      if context.state.status == .active {
+        ActivityControlButton(
+          label: "Pause activity",
+          symbol: "pause.fill",
+          intent: PauseActivityIntent(activityId: context.attributes.activityId),
+        )
+      } else {
+        ActivityControlButton(
+          label: "Resume activity",
+          symbol: "play.fill",
+          intent: ResumeActivityIntent(activityId: context.attributes.activityId),
+        )
+      }
+      ActivityControlButton(
+        label: "Complete activity",
+        symbol: "stop.fill",
+        intent: CompleteActivityIntent(activityId: context.attributes.activityId),
+        tint: .red,
+      )
+    }
+  }
+}
+
+// Keeps Lock Screen actions visually compact while retaining clear VoiceOver labels.
+private struct ActivityControlButton<Intent: AppIntent>: View {
+  let label: String
+  let symbol: String
+  let intent: Intent
+  var tint: Color = .primary
+
+  var body: some View {
+    Button(intent: intent) {
+      Image(systemName: symbol)
+        .font(.caption.weight(.bold))
+        .frame(width: 44, height: 44)
+    }
+    .buttonStyle(.plain)
+    .tint(tint)
+    .contentShape(Rectangle())
+    .accessibilityLabel(label)
   }
 }
 
@@ -97,21 +129,24 @@ private struct ActivityProgressView: View {
   let context: ActivityViewContext<ActivityLiveActivityAttributes>
 
   var body: some View {
-    if context.state.status == .active, let progressRange {
-      ProgressView(timerInterval: progressRange, countsDown: false) {
-        Text("Focus progress")
-      } currentValueLabel: {
-        Text("Active")
-      }
-      .tint(Color(red: 0.07, green: 0.38, blue: 0.55))
-    } else {
-      ProgressView(value: pausedProgress)
-        .tint(Color(red: 0.75, green: 0.48, blue: 0.08))
-        .overlay(alignment: .trailing) {
-          Text(formatElapsed(context.state.elapsedMilliseconds))
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(.secondary)
+    HStack(spacing: 10) {
+      Group {
+        if context.state.status == .active, let progressRange {
+          ProgressView(timerInterval: progressRange, countsDown: false)
+            .tint(Color(red: 0.07, green: 0.38, blue: 0.55))
+        } else {
+          ProgressView(value: pausedProgress)
+            .tint(Color(red: 0.75, green: 0.48, blue: 0.08))
+            .overlay(alignment: .trailing) {
+              Text(formatElapsed(context.state.elapsedMilliseconds))
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
+                .offset(y: -14)
+            }
         }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      ActivityProgressControls(context: context)
     }
   }
 

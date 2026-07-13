@@ -19,7 +19,8 @@ describe('activity Live Activity bridge', () => {
     nativeManager.getCurrentActivityId.mockResolvedValue('activity-1');
     nativeManager.consumeCommands.mockResolvedValue([
       { commandId: 'command-1', activityId: 'activity-1', action: 'pause', occurredAt: 20_000 },
-      { commandId: 'command-2', activityId: 'activity-1', action: 'complete', occurredAt: 40_000 },
+      { commandId: 'command-2', activityId: 'activity-1', action: 'resume', occurredAt: 30_000 },
+      { commandId: 'command-3', activityId: 'activity-1', action: 'complete', occurredAt: 40_000 },
     ]);
     nativeManager.acknowledgeCommands.mockResolvedValue(undefined);
     jest.doMock('react-native', () => ({
@@ -45,11 +46,12 @@ describe('activity Live Activity bridge', () => {
   it('preserves command order and acknowledges exact command identifiers', async () => {
     await expect(liveActivityService.consumeLiveActivityCommands()).resolves.toEqual([
       { commandId: 'command-1', activityId: 'activity-1', action: 'pause', occurredAt: 20_000 },
-      { commandId: 'command-2', activityId: 'activity-1', action: 'complete', occurredAt: 40_000 },
+      { commandId: 'command-2', activityId: 'activity-1', action: 'resume', occurredAt: 30_000 },
+      { commandId: 'command-3', activityId: 'activity-1', action: 'complete', occurredAt: 40_000 },
     ]);
 
-    await liveActivityService.acknowledgeLiveActivityCommands(['command-1', 'command-2']);
-    expect(nativeManager.acknowledgeCommands).toHaveBeenCalledWith(['command-1', 'command-2']);
+    await liveActivityService.acknowledgeLiveActivityCommands(['command-1', 'command-2', 'command-3']);
+    expect(nativeManager.acknowledgeCommands).toHaveBeenCalledWith(['command-1', 'command-2', 'command-3']);
   });
 
   it('returns a safe no-op result when the native Live Activity manager is unavailable', async () => {
