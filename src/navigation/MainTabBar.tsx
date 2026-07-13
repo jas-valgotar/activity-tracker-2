@@ -1,9 +1,9 @@
-// Overview: Renders a compact bottom switcher for focus, daily presets, completed, and all activities.
+// Overview: Renders a compact bottom switcher for Home, completed, and all activities.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
-import { CalendarDays, CheckCircle2, CircleDot, List } from 'lucide-react-native';
+import { CheckCircle2, House, List } from 'lucide-react-native';
 import type { MainTabParamList } from './types';
 import { colors, radii, spacing } from '../ui/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,8 +15,7 @@ const tabItems: Array<{
   label: string;
   Icon: typeof CheckCircle2;
 }> = [
-  { name: 'Home', label: 'Focus', Icon: CircleDot },
-  { name: 'Daily', label: 'Daily', Icon: CalendarDays },
+  { name: 'Home', label: 'Home', Icon: House },
   { name: 'Completed', label: 'Done', Icon: CheckCircle2 },
   { name: 'All', label: 'All', Icon: List },
 ];

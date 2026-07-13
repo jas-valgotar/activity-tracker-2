@@ -1,4 +1,4 @@
-// Overview: Tests optional daily reminder time validation, parsing, and display formatting.
+// Overview: Tests optional routine reminder time validation, parsing, and display formatting.
 
 import { formatReminderTime, isValidReminderTimeMinutes, parseReminderTime } from '../src/domain/reminderTime';
 

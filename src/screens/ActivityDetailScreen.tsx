@@ -5,14 +5,16 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import type { RouteProp } from '@react-navigation/native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CheckCircle2, Pause, Play, Trash2 } from 'lucide-react-native';
+import { BookmarkPlus, CheckCircle2, Pause, Play, Trash2 } from 'lucide-react-native';
 import { useAppData } from '../data/AppDataProvider';
-import type { ActivityWithLogs, ProgressPeriod, ProgressReport } from '../domain/activityTypes';
+import type { ActivityPreset, ActivityWithLogs, ProgressPeriod, ProgressReport } from '../domain/activityTypes';
 import { calculateActiveElapsedMs, formatDurationWithSeconds, formatEventTimestamp, formatTargetDuration } from '../domain/time';
 import type { RootStackParamList } from '../navigation/types';
 import { TimerRing } from '../ui/TimerRing';
 import { ActivityProgressCard } from '../ui/ActivityProgressCard';
 import { DebugComponentLabel } from '../ui/DebugComponentFrame';
+import { PresetEditor } from '../ui/PresetEditor';
+import type { PresetDraft } from '../ui/PresetEditor';
 import { colors, radii, spacing } from '../ui/theme';
 
 type DetailRoute = RouteProp<RootStackParamList, 'ActivityDetail'>;
@@ -30,11 +32,17 @@ export function ActivityDetailScreen() {
     completeActivity,
     deleteActivity,
     getActivityProgressReport,
+    listPresets,
+    createPreset,
+    updatePreset,
   } = useAppData();
   const [activity, setActivity] = useState<ActivityWithLogs | null>(null);
   const [progressPeriod, setProgressPeriod] = useState<ProgressPeriod>('week');
   const [progressReport, setProgressReport] = useState<ProgressReport | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [routinePreset, setRoutinePreset] = useState<ActivityPreset | null>(null);
+  const [routineDraft, setRoutineDraft] = useState<PresetDraft | null>(null);
+  const [isRoutineEditorVisible, setIsRoutineEditorVisible] = useState(false);
 
   // Loads the latest activity state and navigates back if it no longer exists.
   const loadActivity = useCallback(async () => {
@@ -122,6 +130,51 @@ export function ActivityDetailScreen() {
     await loadProgress();
   }
 
+  // Opens a routine editor for an existing match or a prefilled new routine.
+  function openRoutineEditor(preset: ActivityPreset | null, draft: PresetDraft | null = null) {
+    setRoutinePreset(preset);
+    setRoutineDraft(draft);
+    setIsRoutineEditorVisible(true);
+  }
+
+  // Promotes the activity title and target into a reusable routine without changing its history.
+  async function handleAddToRoutine() {
+    if (!activity) {
+      return;
+    }
+
+    const draft = { title: activity.title, durationMinutes: activity.targetDurationMinutes, reminderTimeMinutes: null };
+    try {
+      const matchingRoutine = (await listPresets()).find(routine => isMatchingRoutine(routine, draft));
+      if (!matchingRoutine) {
+        openRoutineEditor(null, draft);
+        return;
+      }
+
+      Alert.alert('Routine already exists', `Use or update "${matchingRoutine.title}" instead?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit existing', onPress: () => openRoutineEditor(matchingRoutine) },
+        { text: 'Create new', onPress: () => openRoutineEditor(null, draft) },
+      ]);
+    } catch (error) {
+      Alert.alert('Could Not Add Routine', getErrorMessage(error));
+    }
+  }
+
+  // Saves either a new routine draft or edits the matching existing routine.
+  async function handleSaveRoutine(title: string, durationMinutes: number, reminderTimeMinutes: number | null) {
+    try {
+      if (routinePreset) {
+        await updatePreset(routinePreset.id, title, durationMinutes, reminderTimeMinutes);
+      } else {
+        await createPreset(title, durationMinutes, reminderTimeMinutes);
+      }
+      setIsRoutineEditorVisible(false);
+    } catch (error) {
+      Alert.alert('Could Not Save Routine', getErrorMessage(error));
+    }
+  }
+
   // Confirms deletion, soft-deletes the activity, and returns to the list.
   function confirmDelete() {
     if (!activity) {
@@ -194,7 +247,7 @@ export function ActivityDetailScreen() {
           targetDurationMinutes={activity.targetDurationMinutes}
         />
       ) : null}
-      <View style={styles.actions}>
+      {!isCompleted ? <View style={styles.actions}>
         {!isCompleted ? (
           <Pressable accessibilityLabel={`${isPaused ? 'Resume' : 'Pause'} ${activity.title}`} accessibilityRole="button" onPress={handlePauseResume} style={[styles.actionButton, styles.secondaryButton]}>
             {isPaused ? <Play color={colors.text} size={18} /> : <Pause color={colors.text} size={18} />}
@@ -207,7 +260,11 @@ export function ActivityDetailScreen() {
             <Text style={styles.primaryText}>Complete</Text>
           </Pressable>
         ) : null}
-      </View>
+      </View> : null}
+      <Pressable accessibilityLabel={`Add ${activity.title} to routines`} accessibilityRole="button" onPress={handleAddToRoutine} style={styles.routineButton}>
+        <BookmarkPlus color={colors.primaryDeep} size={18} />
+        <Text style={styles.routineButtonText}>Add to routine</Text>
+      </Pressable>
       <View style={styles.sectionHeading}>
         <Text style={styles.sectionTitle}>Session log</Text>
         <Text style={styles.eventCount}>{activity.events.length} events</Text>
@@ -223,6 +280,13 @@ export function ActivityDetailScreen() {
           </View>
         ))}
       </View>
+      <PresetEditor
+        draft={routineDraft}
+        onClose={() => setIsRoutineEditorVisible(false)}
+        onSave={handleSaveRoutine}
+        preset={routinePreset}
+        visible={isRoutineEditorVisible}
+      />
     </ScrollView>
   );
 }
@@ -235,6 +299,11 @@ function isActiveActivityConflict(error: unknown): boolean {
 // Converts unknown lifecycle errors into concise user-facing copy.
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Please try again.';
+}
+
+// Matches the user-visible identity used to prevent accidental duplicate routines.
+function isMatchingRoutine(routine: ActivityPreset, draft: PresetDraft): boolean {
+  return routine.durationMinutes === draft.durationMinutes && routine.title.trim().toLowerCase() === draft.title.trim().toLowerCase();
 }
 
 const styles = StyleSheet.create({
@@ -314,6 +383,20 @@ const styles = StyleSheet.create({
   primaryText: {
     color: colors.surface,
     fontSize: 16,
+    fontWeight: '800',
+  },
+  routineButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  routineButtonText: {
+    color: colors.primaryDeep,
+    fontSize: 14,
     fontWeight: '800',
   },
   secondaryButton: {

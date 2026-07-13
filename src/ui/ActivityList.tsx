@@ -1,6 +1,7 @@
 // Overview: Renders uncluttered scrollable activity lists with shared empty, loading, and row behavior.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import type { ReactElement } from 'react';
 import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { ListTodo } from 'lucide-react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -14,10 +15,16 @@ import { ActivityRow } from './ActivityRow';
 type ActivityListProps = {
   filter: ActivityFilter;
   emptyText: string;
+  footer?: ReactElement | null;
+  minimalEmpty?: boolean;
+};
+
+export type ActivityListHandle = {
+  scrollToTop(): void;
 };
 
 // Shows a reusable list for home, completed, and all activity screens.
-export function ActivityList({ filter, emptyText }: ActivityListProps) {
+export const ActivityList = forwardRef<ActivityListHandle, ActivityListProps>(function ActivityListComponent({ filter, emptyText, footer, minimalEmpty = false }, ref) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const {
     activityRevision,
@@ -33,6 +40,13 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [now, setNow] = useState(Date.now());
   const lastLoadedRevisionRef = useRef(activityRevision);
+  const listRef = useRef<FlatList<ActivityWithLogs>>(null);
+
+  useImperativeHandle(ref, () => ({
+    scrollToTop() {
+      listRef.current?.scrollToOffset({ animated: true, offset: 0 });
+    },
+  }), []);
 
   // Reloads activities for the current filter and sort mode.
   const loadActivities = useCallback(async () => {
@@ -143,7 +157,8 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
 
   return (
     <FlatList
-      contentContainerStyle={[styles.content, activities.length === 0 ? styles.emptyContent : null]}
+      ref={listRef}
+      contentContainerStyle={[styles.content, activities.length === 0 && !minimalEmpty ? styles.emptyContent : null]}
       data={activities}
       keyExtractor={activity => activity.id}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
@@ -159,17 +174,20 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
           onResume={handleResume}
         />
       )}
-      ListEmptyComponent={
+      ListEmptyComponent={minimalEmpty ? (
+        <Text style={styles.minimalEmptyText}>{emptyText}</Text>
+      ) : (
         <View style={styles.emptyState}>
           <View style={styles.emptyIcon}>
             <ListTodo color={colors.primary} size={24} strokeWidth={1.8} />
           </View>
           <Text style={styles.emptyTitle}>{emptyText}</Text>
         </View>
-      }
+      )}
+      ListFooterComponent={footer}
     />
   );
-}
+});
 
 // Identifies the single-active-activity guard so a paused row can offer a focus switch.
 function isActiveActivityConflict(error: unknown): boolean {
@@ -213,5 +231,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
+  },
+  minimalEmptyText: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '700',
+    paddingVertical: spacing.md,
   },
 });

@@ -103,7 +103,7 @@ describe('activity target notifications', () => {
     expect(notificationManager.scheduleTargetNotification).not.toHaveBeenCalled();
   });
 
-  it('schedules an optional repeating reminder for a Daily preset', async () => {
+  it('schedules an optional repeating reminder for a routine', async () => {
     await notificationService.schedulePresetReminder({
       id: 'preset-meditation',
       title: 'Meditation',
@@ -121,7 +121,7 @@ describe('activity target notifications', () => {
     );
   });
 
-  it('does not request permission when a Daily preset has no reminder', async () => {
+  it('does not request permission when a routine has no reminder', async () => {
     await notificationService.schedulePresetReminder({
       id: 'preset-reading',
       title: 'Reading',

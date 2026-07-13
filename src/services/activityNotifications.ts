@@ -108,7 +108,7 @@ export function cancelActivityPauseReminder(activityId: string): void {
   notificationManager?.cancelPauseReminder(activityId);
 }
 
-// Schedules a repeating local reminder for an optional Daily preset time.
+// Schedules a repeating local reminder for an optional routine time.
 export async function schedulePresetReminder(preset: ActivityPreset): Promise<void> {
   if (!notificationManager) {
     return;
@@ -131,7 +131,7 @@ export async function schedulePresetReminder(preset: ActivityPreset): Promise<vo
   }
 }
 
-// Cancels a repeating Daily preset reminder.
+// Cancels a repeating routine reminder.
 export function cancelPresetReminder(presetId: string): void {
   notificationManager?.cancelPresetReminder(presetId);
 }

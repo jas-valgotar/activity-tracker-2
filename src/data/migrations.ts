@@ -55,6 +55,7 @@ export async function runMigrations(db: DatabaseClient): Promise<void> {
     ['activity_sort_mode', DEFAULT_SORT_MODE],
   );
   await seedDefaultPresets(db);
+  await upgradeLegacyDefaultPresets(db);
 }
 
 // Preserves the most recently accessed active activity and pauses older duplicates before enforcing the unique index.
@@ -95,7 +96,7 @@ async function ensureActivityTargetDurationColumn(db: DatabaseClient): Promise<v
   }
 }
 
-// Seeds editable examples once so the Daily screen is immediately useful on a new install.
+// Seeds the editable routines shown on a fresh Home screen.
 async function seedDefaultPresets(db: DatabaseClient): Promise<void> {
   const seededResult = await db.execute('SELECT value FROM settings WHERE key = ?', ['daily_presets_seeded']);
   if (seededResult.rows[0]?.value === 'true') {
@@ -106,17 +107,43 @@ async function seedDefaultPresets(db: DatabaseClient): Promise<void> {
   await db.executeBatch([
     [
       'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ['preset-meditation', 'Meditation', 30, null, now, now],
+      ['preset-walk', 'Walk', 15, null, now, now],
     ],
     [
       'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ['preset-deep-work', 'Deep Work', 60, null, now, now],
+      ['preset-reading', 'Reading', 10, null, now, now],
     ],
     [
       'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ['preset-reading', 'Reading', 30, null, now, now],
+      ['preset-play', 'Play', 10, null, now, now],
     ],
     ['INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['daily_presets_seeded', 'true']],
+  ]);
+}
+
+// Replaces only the legacy built-in routines once while preserving user-created entries.
+async function upgradeLegacyDefaultPresets(db: DatabaseClient): Promise<void> {
+  const upgradeResult = await db.execute('SELECT value FROM settings WHERE key = ?', ['home_routines_v1_seeded']);
+  if (upgradeResult.rows[0]?.value === 'true') {
+    return;
+  }
+
+  const now = Date.now();
+  await db.executeBatch([
+    ['DELETE FROM activity_presets WHERE id IN (?, ?, ?)', ['preset-meditation', 'preset-deep-work', 'preset-reading']],
+    [
+      'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ['preset-walk', 'Walk', 15, null, now, now],
+    ],
+    [
+      'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ['preset-reading', 'Reading', 10, null, now, now],
+    ],
+    [
+      'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ['preset-play', 'Play', 10, null, now, now],
+    ],
+    ['INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['home_routines_v1_seeded', 'true']],
   ]);
 }
 

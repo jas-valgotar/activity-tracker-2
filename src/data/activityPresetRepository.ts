@@ -1,4 +1,4 @@
-// Overview: Provides local CRUD operations for reusable daily activity presets.
+// Overview: Provides local CRUD operations for reusable Home routines.
 
 import type { DatabaseClient } from './database';
 import type { ActivityPreset } from '../domain/activityTypes';
@@ -25,7 +25,7 @@ export type ActivityPresetRepository = {
   deletePreset(id: string): Promise<void>;
 };
 
-// Creates a repository that owns reusable daily preset persistence.
+// Creates a repository that owns reusable routine persistence.
 export function createActivityPresetRepository(db: DatabaseClient): ActivityPresetRepository {
   function validatePreset(title: string, durationMinutes: number, reminderTimeMinutes: number | null | undefined): string {
     const trimmedTitle = title.trim();
@@ -48,7 +48,7 @@ export function createActivityPresetRepository(db: DatabaseClient): ActivityPres
   return {
     async listPresets() {
       const result = await db.execute(
-        'SELECT id, title, duration_minutes, reminder_time_minutes, created_at, updated_at FROM activity_presets ORDER BY created_at ASC',
+        'SELECT id, title, duration_minutes, reminder_time_minutes, created_at, updated_at FROM activity_presets ORDER BY updated_at DESC, created_at DESC, id DESC',
       );
       return result.rows.map(row => rowToPreset(row as DbPresetRow));
     },

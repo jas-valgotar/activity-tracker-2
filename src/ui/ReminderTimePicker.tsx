@@ -1,4 +1,4 @@
-// Overview: Provides optional low-friction daily reminder time selection for reusable activity presets.
+// Overview: Provides optional low-friction reminder time selection for reusable Home routines.
 
 import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -44,7 +44,7 @@ export function ReminderTimePicker({ value, onChange }: ReminderTimePickerProps)
             return (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={time === null ? 'No daily reminder' : `Remind at ${formatReminderTime(time)}`}
+                accessibilityLabel={time === null ? 'No routine reminder' : `Remind at ${formatReminderTime(time)}`}
                 accessibilityState={{ selected: isSelected }}
                 key={time === null ? 'none' : time}
                 onPress={() => onChange(time)}

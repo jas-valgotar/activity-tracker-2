@@ -1,4 +1,4 @@
-// Overview: Edits a daily preset title and target duration in a reusable modal form.
+// Overview: Creates or edits reusable Home routines in a shared modal form.
 
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -12,12 +12,19 @@ import { colors, radii, spacing } from './theme';
 type PresetEditorProps = {
   visible: boolean;
   preset: ActivityPreset | null;
+  draft?: PresetDraft | null;
   onClose(): void;
   onSave(title: string, durationMinutes: number, reminderTimeMinutes: number | null): Promise<void>;
 };
 
-// Renders the shared create/edit form for daily presets.
-export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorProps) {
+export type PresetDraft = {
+  title: string;
+  durationMinutes: number;
+  reminderTimeMinutes?: number | null;
+};
+
+// Renders the shared create/edit form for Home routines.
+export function PresetEditor({ visible, preset, draft = null, onClose, onSave }: PresetEditorProps) {
   const [title, setTitle] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(DEFAULT_TARGET_DURATION_MINUTES);
   const [reminderTimeMinutes, setReminderTimeMinutes] = useState<number | null>(null);
@@ -28,10 +35,10 @@ export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorP
       return;
     }
 
-    setTitle(preset?.title ?? '');
-    setDurationMinutes(preset?.durationMinutes ?? DEFAULT_TARGET_DURATION_MINUTES);
-    setReminderTimeMinutes(preset?.reminderTimeMinutes ?? null);
-  }, [preset, visible]);
+    setTitle(preset?.title ?? draft?.title ?? '');
+    setDurationMinutes(preset?.durationMinutes ?? draft?.durationMinutes ?? DEFAULT_TARGET_DURATION_MINUTES);
+    setReminderTimeMinutes(preset?.reminderTimeMinutes ?? draft?.reminderTimeMinutes ?? null);
+  }, [draft, preset, visible]);
 
   async function handleSave() {
     if (!title.trim() || isSaving) {
@@ -52,8 +59,8 @@ export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorP
         <View style={styles.card}>
           <View style={styles.header}>
             <View>
-              <Text style={styles.eyebrow}>{preset ? 'EDIT PRESET' : 'NEW PRESET'}</Text>
-              <Text style={styles.title}>{preset ? 'Tune your routine' : 'Create a daily focus'}</Text>
+              <Text style={styles.eyebrow}>{preset ? 'EDIT ROUTINE' : 'NEW ROUTINE'}</Text>
+              <Text style={styles.title}>{preset ? 'Tune your routine' : 'Create a routine'}</Text>
             </View>
             <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancelButton}>
               <Text style={styles.cancelText}>Cancel</Text>
@@ -63,7 +70,7 @@ export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorP
             accessibilityLabel="Preset name"
             autoFocus={!preset}
             onChangeText={setTitle}
-            placeholder="e.g. Meditation"
+            placeholder="e.g. Morning walk"
             placeholderTextColor={colors.muted}
             style={styles.input}
             value={title}
@@ -78,7 +85,7 @@ export function PresetEditor({ visible, preset, onClose, onSave }: PresetEditorP
           />
           <ReminderTimePicker value={reminderTimeMinutes} onChange={setReminderTimeMinutes} />
           <Pressable accessibilityRole="button" disabled={!title.trim() || isSaving} onPress={handleSave} style={[styles.saveButton, !title.trim() ? styles.disabledButton : null]}>
-            <Text style={styles.saveText}>{preset ? 'Save changes' : 'Add preset'}</Text>
+            <Text style={styles.saveText}>{preset ? 'Save changes' : 'Add routine'}</Text>
           </Pressable>
         </View>
       </KeyboardAwareScrollView>

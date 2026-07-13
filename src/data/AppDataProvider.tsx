@@ -360,13 +360,13 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     [bumpActivityRevision, cleanupAutoCompletedActivities, getRepositories, syncLiveActivityForActivity],
   );
 
-  // Loads the reusable daily activity presets.
+  // Loads the reusable Home routines.
   const listPresets = useCallback(async () => {
     const { presets } = getRepositories();
     return presets.listPresets();
   }, [getRepositories]);
 
-  // Keeps all optional Daily preset reminders synchronized after preset edits.
+  // Keeps all optional routine reminders synchronized after routine edits.
   const syncPresetReminders = useCallback(
     async (presetList: ActivityPreset[]) => {
       await Promise.all(presetList.map(preset => schedulePresetReminder(preset)));
@@ -374,7 +374,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     [],
   );
 
-  // Creates a reusable daily activity preset.
+  // Creates a reusable Home routine.
   const createPreset = useCallback(
     async (title: string, durationMinutes: number, reminderTimeMinutes?: number | null) => {
       const { presets } = getRepositories();
@@ -384,7 +384,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     [getRepositories, syncPresetReminders],
   );
 
-  // Updates a reusable daily activity preset.
+  // Updates a reusable Home routine.
   const updatePreset = useCallback(
     async (id: string, title: string, durationMinutes: number, reminderTimeMinutes?: number | null) => {
       const { presets } = getRepositories();
@@ -394,7 +394,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     [getRepositories, syncPresetReminders],
   );
 
-  // Deletes a reusable daily activity preset.
+  // Deletes a reusable Home routine.
   const deletePreset = useCallback(
     async (id: string) => {
       const { presets } = getRepositories();

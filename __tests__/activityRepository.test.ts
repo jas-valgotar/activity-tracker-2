@@ -203,14 +203,18 @@ describe('activity repository', () => {
     expect((await activities.getActivityWithLogs(other.id))?.status).toBe('active');
   });
 
-  it('seeds and manages daily activity presets', async () => {
+  it('seeds and manages Home routines', async () => {
     const { presets } = await createRepositories();
     const seeded = await presets.listPresets();
 
-    expect(seeded.map(preset => preset.title)).toEqual(['Meditation', 'Deep Work', 'Reading']);
+    expect(seeded.map(preset => preset.title).sort()).toEqual(['Play', 'Reading', 'Walk']);
+    expect(seeded.find(preset => preset.title === 'Walk')).toMatchObject({ durationMinutes: 15, reminderTimeMinutes: null });
+    expect(seeded.find(preset => preset.title === 'Reading')).toMatchObject({ durationMinutes: 10, reminderTimeMinutes: null });
+    expect(seeded.find(preset => preset.title === 'Play')).toMatchObject({ durationMinutes: 10, reminderTimeMinutes: null });
 
-    await presets.createPreset('Walk', 45, 17 * 60);
-    const created = (await presets.listPresets()).find(preset => preset.title === 'Walk');
+    nowSpy.mockReturnValue(2_000);
+    await presets.createPreset('Yoga', 45, 17 * 60);
+    const created = (await presets.listPresets()).find(preset => preset.title === 'Yoga');
     expect(created?.durationMinutes).toBe(45);
     expect(created?.reminderTimeMinutes).toBe(17 * 60);
 
@@ -218,24 +222,26 @@ describe('activity repository', () => {
       throw new Error('Created preset was not returned.');
     }
 
-    await presets.updatePreset(created.id, 'Long Walk', 60, null);
+    nowSpy.mockReturnValue(3_000);
+    await presets.updatePreset(created.id, 'Long Yoga', 60, null);
     expect((await presets.listPresets()).find(preset => preset.id === created.id)).toMatchObject({
-      title: 'Long Walk',
+      title: 'Long Yoga',
       durationMinutes: 60,
       reminderTimeMinutes: null,
     });
+    expect((await presets.listPresets())[0]?.id).toBe(created.id);
 
     await presets.deletePreset(created.id);
     expect((await presets.listPresets()).some(preset => preset.id === created.id)).toBe(false);
   });
 
-  it('does not recreate deleted seeded presets on a later migration', async () => {
+  it('does not recreate deleted seeded routines on a later migration', async () => {
     const { db, presets } = await createRepositories();
 
-    await presets.deletePreset('preset-meditation');
+    await presets.deletePreset('preset-walk');
     await runMigrations(db);
 
-    expect((await presets.listPresets()).some(preset => preset.id === 'preset-meditation')).toBe(false);
+    expect((await presets.listPresets()).some(preset => preset.id === 'preset-walk')).toBe(false);
   });
 
   it('reports progress from completed lifecycle intervals', async () => {
