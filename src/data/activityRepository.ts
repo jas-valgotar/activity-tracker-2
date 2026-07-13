@@ -38,6 +38,7 @@ type DbEventRow = {
 
 export type ActivityRepository = {
   createActivity(title: string, targetDurationMinutes?: number): Promise<ActivityWithLogs>;
+  logPastActivity(title: string, durationMinutes: number, completedAt: number): Promise<ActivityWithLogs>;
   pauseCurrentAndCreateActivity(title: string, targetDurationMinutes?: number): Promise<ActivityStartResult>;
   pauseCurrentAndResumeActivity(id: string, occurredAt?: number): Promise<ActivityStartResult>;
   listActivities(filter: ActivityFilter, sortMode: ActivitySortMode): Promise<ActivityWithLogs[]>;
@@ -117,6 +118,36 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
       const activity = await this.getActivityWithLogs(id);
       if (!activity) {
         throw new Error('Activity could not be loaded after creation.');
+      }
+
+      return activity;
+    },
+
+    // Records a completed session in the past using the same lifecycle events as a tracked activity.
+    async logPastActivity(title, durationMinutes, completedAt) {
+      const trimmedTitle = validateActivityInput(title, durationMinutes);
+      validatePastCompletionTimestamp(completedAt);
+
+      const id = createId();
+      const startedAt = completedAt - durationMinutes * 60_000;
+      await db.executeBatch([
+        [
+          'INSERT INTO activities (id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [id, trimmedTitle, 'completed', startedAt, durationMinutes, completedAt, completedAt, null],
+        ],
+        [
+          'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
+          [createId(), id, 'started', startedAt],
+        ],
+        [
+          'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
+          [createId(), id, 'completed', completedAt],
+        ],
+      ]);
+
+      const activity = await this.getActivityWithLogs(id);
+      if (!activity) {
+        throw new Error('Past activity could not be loaded after saving.');
       }
 
       return activity;
@@ -369,6 +400,16 @@ function validateActivityInput(title: string, targetDurationMinutes: number): st
   }
 
   return trimmedTitle;
+}
+
+// Rejects invalid or future timestamps so a historical session cannot become an active timer by accident.
+function validatePastCompletionTimestamp(completedAt: number): void {
+  if (!Number.isFinite(completedAt)) {
+    throw new Error('Past activity completion time is required.');
+  }
+  if (completedAt > Date.now()) {
+    throw new Error('Past activity must end in the past.');
+  }
 }
 
 // Returns the screen-specific SQL filter for non-deleted activity lists.

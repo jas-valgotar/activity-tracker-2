@@ -74,6 +74,7 @@ export function DurationPicker({ value, onChange, label = 'Duration' }: Duration
             const isSelected = duration === value;
             return (
               <Pressable
+                accessibilityLabel={`Choose ${formatTargetDuration(duration)} duration`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
                 key={duration}

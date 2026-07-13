@@ -48,6 +48,45 @@ describe('activity repository', () => {
     expect((await activities.getActivityWithLogs(created.id))?.targetDurationMinutes).toBe(37);
   });
 
+  it('logs a past completed activity with derived start time and standard lifecycle events', async () => {
+    const { activities } = await createRepositories();
+    const completedAt = new Date(2026, 6, 10, 14, 30, 0).getTime();
+    nowSpy.mockReturnValue(new Date(2026, 6, 13, 12, 0, 0).getTime());
+
+    const logged = await activities.logPastActivity('  Reading  ', 45, completedAt);
+
+    expect(logged).toMatchObject({
+      title: 'Reading',
+      status: 'completed',
+      startedAt: completedAt - 45 * 60 * 1000,
+      completedAt,
+      targetDurationMinutes: 45,
+    });
+    expect(logged.events.map(event => [event.type, event.occurredAt])).toEqual([
+      ['started', completedAt - 45 * 60 * 1000],
+      ['completed', completedAt],
+    ]);
+
+    const report = await activities.getActivityProgressReport(
+      logged.id,
+      'week',
+      new Date(2026, 6, 12, 12, 0, 0).getTime(),
+    );
+    expect(report.totalActiveMs).toBe(45 * 60 * 1000);
+    expect(report.sessionsCompleted).toBe(1);
+  });
+
+  it('rejects blank, invalid-duration, and future past activities before writing rows', async () => {
+    const { activities } = await createRepositories();
+    const now = new Date(2026, 6, 13, 12, 0, 0).getTime();
+    nowSpy.mockReturnValue(now);
+
+    await expect(activities.logPastActivity('   ', 30, now)).rejects.toThrow('Activity title is required.');
+    await expect(activities.logPastActivity('Reading', 14, now)).rejects.toThrow('Activity duration must be');
+    await expect(activities.logPastActivity('Reading', 30, now + 1)).rejects.toThrow('Past activity must end in the past.');
+    expect(await activities.listActivities('all', 'newest')).toHaveLength(0);
+  });
+
   it('allows only one active activity at a time', async () => {
     const { activities } = await createRepositories();
     const first = await activities.createActivity('First focus');

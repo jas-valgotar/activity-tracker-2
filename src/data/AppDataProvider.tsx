@@ -51,6 +51,7 @@ type AppDataContextValue = {
   listActivities(filter: ActivityFilter): Promise<ActivityWithLogs[]>;
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
   createActivity(title: string, targetDurationMinutes?: number): Promise<void>;
+  logPastActivity(title: string, durationMinutes: number, completedAt: number): Promise<void>;
   pauseCurrentAndCreateActivity(title: string, targetDurationMinutes?: number): Promise<void>;
   pauseCurrentAndResumeActivity(id: string): Promise<void>;
   listPresets(): Promise<ActivityPreset[]>;
@@ -295,6 +296,16 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
   );
 
+  // Records an already-completed session without scheduling notifications or changing the Live Activity.
+  const logPastActivity = useCallback(
+    async (title: string, durationMinutes: number, completedAt: number) => {
+      const { activities } = getRepositories();
+      await activities.logPastActivity(title, durationMinutes, completedAt);
+      bumpActivityRevision();
+    },
+    [bumpActivityRevision, getRepositories],
+  );
+
   // Pauses the current focus and starts a new activity after the user confirms the switch.
   const pauseCurrentAndCreateActivity = useCallback(
     async (title: string, targetDurationMinutes?: number) => {
@@ -493,6 +504,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       listActivities,
       getActivityWithLogs,
       createActivity,
+      logPastActivity,
       pauseCurrentAndCreateActivity,
       pauseCurrentAndResumeActivity,
       listPresets,
@@ -516,6 +528,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       listActivities,
       getActivityWithLogs,
       createActivity,
+      logPastActivity,
       pauseCurrentAndCreateActivity,
       pauseCurrentAndResumeActivity,
       listPresets,
