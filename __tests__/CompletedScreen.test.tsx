@@ -15,7 +15,7 @@ jest.mock('../src/ui/ActivityList', () => ({
 }));
 
 jest.mock('../src/ui/ScreenHeader', () => ({
-  ScreenHeader: () => null,
+  ScreenHeader: ({ trailingAction }: { trailingAction?: React.ReactNode }) => trailingAction ?? null,
 }));
 
 jest.mock('../src/ui/PastActivityComposer', () => {

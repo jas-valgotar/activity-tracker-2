@@ -1,4 +1,4 @@
-// Overview: Renders scrollable activity lists with shared empty, loading, and row behavior.
+// Overview: Renders uncluttered scrollable activity lists with shared empty, loading, and row behavior.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
@@ -148,33 +148,23 @@ export function ActivityList({ filter, emptyText }: ActivityListProps) {
       keyExtractor={activity => activity.id}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
       renderItem={({ item, index }) => (
-        <React.Fragment key={item.id}>
-          <ActivityRow
-            activity={item}
-            colorIndex={index}
-            now={now}
-            onComplete={handleComplete}
-            onDelete={handleDelete}
-            onPause={handlePause}
-            onPress={handleOpenActivity}
-            onResume={handleResume}
-          />
-          {item.status === 'active' && index < activities.length - 1 ? (
-            <View style={styles.activeDivider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerLabel}>OTHER ACTIVITIES</Text>
-              <View style={styles.dividerLine} />
-            </View>
-          ) : null}
-        </React.Fragment>
+        <ActivityRow
+          activity={item}
+          colorIndex={index}
+          now={now}
+          onComplete={handleComplete}
+          onDelete={handleDelete}
+          onPause={handlePause}
+          onPress={handleOpenActivity}
+          onResume={handleResume}
+        />
       )}
       ListEmptyComponent={
         <View style={styles.emptyState}>
           <View style={styles.emptyIcon}>
-            <ListTodo color={colors.primary} size={28} strokeWidth={1.8} />
+            <ListTodo color={colors.primary} size={24} strokeWidth={1.8} />
           </View>
           <Text style={styles.emptyTitle}>{emptyText}</Text>
-          <Text style={styles.emptyHint}>Your next focused session will show up here.</Text>
         </View>
       }
     />
@@ -196,57 +186,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.xl,
   },
-  activeDivider: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-    marginTop: -spacing.xs,
-  },
-  dividerLabel: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  dividerLine: {
-    backgroundColor: colors.border,
-    flex: 1,
-    height: 1,
-  },
   emptyContent: {
     flexGrow: 1,
     justifyContent: 'center',
   },
   emptyState: {
     alignItems: 'center',
-    backgroundColor: colors.surfaceRaised,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    marginTop: spacing.xxl,
-    padding: spacing.xl,
+    padding: spacing.xxl,
   },
   emptyIcon: {
     alignItems: 'center',
     backgroundColor: colors.primarySoft,
     borderRadius: radii.pill,
-    height: 56,
+    height: 48,
     justifyContent: 'center',
     marginBottom: spacing.md,
-    width: 56,
+    width: 48,
   },
   emptyTitle: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
-    textAlign: 'center',
-  },
-  emptyHint: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: spacing.xs,
     textAlign: 'center',
   },
   loading: {

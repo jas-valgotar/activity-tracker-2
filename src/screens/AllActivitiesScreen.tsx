@@ -3,6 +3,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityList } from '../ui/ActivityList';
+import { DebugComponentLabel } from '../ui/DebugComponentFrame';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { colors } from '../ui/theme';
 
@@ -10,7 +11,8 @@ import { colors } from '../ui/theme';
 export function AllActivitiesScreen() {
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Everything" subtitle="Your complete activity history." />
+      <DebugComponentLabel componentId="screen.all-activities" componentName="AllActivitiesScreen" />
+      <ScreenHeader title="Everything" />
       <ActivityList filter="all" emptyText="No Activity Started" />
     </View>
   );

@@ -12,6 +12,7 @@ import { calculateActiveElapsedMs, formatDurationWithSeconds, formatEventTimesta
 import type { RootStackParamList } from '../navigation/types';
 import { TimerRing } from '../ui/TimerRing';
 import { ActivityProgressCard } from '../ui/ActivityProgressCard';
+import { DebugComponentLabel } from '../ui/DebugComponentFrame';
 import { colors, radii, spacing } from '../ui/theme';
 
 type DetailRoute = RouteProp<RootStackParamList, 'ActivityDetail'>;
@@ -158,10 +159,10 @@ export function ActivityDetailScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <DebugComponentLabel componentId="screen.activity-detail" componentName="ActivityDetailScreen" />
       <View style={styles.topBar}>
-        <Text style={styles.eyebrow}>SESSION DETAILS</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Delete activity" onPress={confirmDelete} style={styles.deleteIcon}>
-          <Trash2 color={colors.danger} size={24} />
+          <Trash2 color={colors.danger} size={20} />
         </Pressable>
       </View>
       <View style={styles.summary}>
@@ -252,22 +253,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   content: {
-    padding: spacing.xl,
+    padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
   deleteIcon: {
     alignItems: 'center',
     backgroundColor: colors.dangerSoft,
     borderRadius: radii.pill,
-    height: 42,
+    height: 36,
     justifyContent: 'center',
-    width: 44,
-  },
-  eyebrow: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 1.3,
+    width: 36,
   },
   loading: {
     alignItems: 'center',
@@ -283,7 +278,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.md,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
   },
   logList: {
     backgroundColor: colors.surfaceRaised,
@@ -331,7 +326,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '900',
   },
   sectionHeading: {
@@ -339,7 +334,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
-    marginTop: spacing.xxl,
+    marginTop: spacing.xl,
   },
   eventCount: {
     color: colors.muted,
@@ -403,11 +398,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: 1,
     flexDirection: 'row',
-    padding: spacing.xl,
-    shadowColor: colors.shadow,
-    shadowOpacity: 0.07,
-    shadowRadius: 18,
-    elevation: 3,
+    padding: spacing.lg,
   },
   summaryCopy: {
     flex: 1,
@@ -416,14 +407,14 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900',
     letterSpacing: -0.6,
   },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    justifyContent: 'flex-end',
+    marginBottom: spacing.xs,
   },
 });

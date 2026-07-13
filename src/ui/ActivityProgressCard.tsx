@@ -1,10 +1,11 @@
-// Overview: Shows weekly, monthly, and quarterly visual progress for one activity detail screen.
+// Overview: Shows compact weekly, monthly, and quarterly visual progress for one activity detail screen.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ProgressPeriod, ProgressReport } from '../domain/activityTypes';
 import { formatDuration, formatTargetDuration, getTargetProgressPercent } from '../domain/time';
 import { colors, radii, spacing } from './theme';
+import { DebugComponentLabel } from './DebugComponentFrame';
 
 type ActivityProgressCardProps = {
   report: ProgressReport;
@@ -25,9 +26,9 @@ export function ActivityProgressCard({ report, period, targetDurationMinutes, on
 
   return (
     <View style={styles.card}>
+      <DebugComponentLabel componentId="ui.activity-progress-card" componentName="ActivityProgressCard" />
       <View style={styles.header}>
         <View>
-          <Text style={styles.eyebrow}>ACTIVITY PROGRESS</Text>
           <Text style={styles.title}>{formatDuration(report.totalActiveMs)} focused</Text>
         </View>
         <Text style={styles.target}>{targetPercent}% of {formatTargetDuration(targetDurationMinutes)}</Text>
@@ -75,25 +76,19 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radii.lg,
     borderWidth: 1,
-    marginTop: spacing.xxl,
-    padding: spacing.lg,
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    position: 'relative',
   },
   header: {
     alignItems: 'flex-end',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  eyebrow: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.1,
-  },
   title: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '900',
-    marginTop: spacing.xs,
   },
   target: {
     color: colors.primary,
@@ -104,7 +99,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
     borderRadius: radii.pill,
     height: 8,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     overflow: 'hidden',
   },
   targetFill: {
@@ -118,7 +113,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     borderWidth: 1,
     flexDirection: 'row',
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     padding: spacing.xs,
   },
   periodButton: {
@@ -143,8 +138,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     flexDirection: 'row',
     gap: spacing.sm,
-    height: 130,
-    marginTop: spacing.lg,
+    height: 110,
+    marginTop: spacing.md,
   },
   barColumn: {
     alignItems: 'center',

@@ -113,6 +113,57 @@ describe('activity repository', () => {
     expect(pausedFirst?.events.at(-1)?.type).toBe('paused');
   });
 
+  it('automatically completes the least recently accessed paused activity when Focus would exceed two paused sessions', async () => {
+    const { activities } = await createRepositories();
+    const first = await activities.createActivity('First focus');
+
+    nowSpy.mockReturnValue(2_000);
+    const second = await activities.pauseCurrentAndCreateActivity('Second focus');
+    nowSpy.mockReturnValue(3_000);
+    const third = await activities.pauseCurrentAndCreateActivity('Third focus');
+    nowSpy.mockReturnValue(4_000);
+    const fourth = await activities.pauseCurrentAndCreateActivity('Fourth focus');
+
+    expect(fourth.autoCompletedActivityIds).toEqual([first.id]);
+    expect((await activities.getActivityWithLogs(first.id))?.events.map(event => [event.type, event.occurredAt])).toEqual([
+      ['started', 1_000],
+      ['paused', 2_000],
+      ['completed', 4_000],
+    ]);
+    expect((await activities.getActivityWithLogs(first.id))?.status).toBe('completed');
+    expect((await activities.listActivities('home', 'newest')).map(activity => activity.id)).toEqual([
+      fourth.activity.id,
+      third.activity.id,
+      second.activity.id,
+    ]);
+    expect((await activities.listActivities('completed', 'newest')).map(activity => activity.id)).toContain(first.id);
+  });
+
+  it('cleans up legacy paused overflow deterministically when Focus capacity is initialized', async () => {
+    const { activities, db } = await createRepositories();
+    const first = await activities.createActivity('Oldest paused');
+
+    nowSpy.mockReturnValue(2_000);
+    const second = await activities.pauseCurrentAndCreateActivity('Middle paused');
+    nowSpy.mockReturnValue(3_000);
+    const third = await activities.pauseCurrentAndCreateActivity('Newest paused');
+
+    // Simulates a pre-capacity installation with three paused records before app startup cleanup runs.
+    await db.execute("UPDATE activities SET status = 'paused' WHERE id = ?", [third.activity.id]);
+    nowSpy.mockReturnValue(4_000);
+    const autoCompletedIds = await activities.completeExcessPausedActivities();
+
+    expect(autoCompletedIds).toEqual([first.id]);
+    expect((await activities.getActivityWithLogs(first.id))?.status).toBe('completed');
+    expect((await activities.getActivityWithLogs(first.id))?.events.at(-1)).toMatchObject({
+      type: 'completed',
+      occurredAt: 4_000,
+    });
+    expect(await activities.listActivities('home', 'newest')).toHaveLength(2);
+    expect((await activities.listActivities('completed', 'newest')).map(activity => activity.id)).toContain(first.id);
+    expect(second.activity.status).toBe('active');
+  });
+
   it('prevents resuming a paused activity while another activity is active', async () => {
     const { activities } = await createRepositories();
     const first = await activities.createActivity('First focus');

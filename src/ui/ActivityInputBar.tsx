@@ -1,10 +1,12 @@
-// Overview: Provides the home-screen text input, native dictation button, and add action.
+// Overview: Provides a compact home-screen activity composer with on-demand duration settings.
 
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Mic, Plus, Sparkles } from 'lucide-react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Clock3, Mic, Plus } from 'lucide-react-native';
 import { createSpeechRecognitionService } from '../services/speech/SpeechRecognitionService';
+import { DEFAULT_TARGET_DURATION_MINUTES, formatTargetDuration } from '../domain/time';
 import { DurationPicker } from './DurationPicker';
+import { DebugComponentLabel } from './DebugComponentFrame';
 import { colors, radii, spacing } from './theme';
 
 type ActivityInputBarProps = {
@@ -19,6 +21,7 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isDurationPickerVisible, setIsDurationPickerVisible] = useState(false);
 
   // Adds the typed or dictated activity title to the active list.
   async function handleAdd() {
@@ -78,30 +81,27 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
 
   return (
     <View style={styles.container}>
-      <View style={styles.heading}>
-        <View style={styles.headingIcon}>
-          <Sparkles color={colors.primary} size={16} strokeWidth={2.4} />
-        </View>
-        <View style={styles.headingCopy}>
-          <TextInput
-            accessibilityLabel="Activity name"
-            onChangeText={setTitle}
-            onSubmitEditing={handleAdd}
-            placeholder="What are you working on?"
-            placeholderTextColor={colors.muted}
-            returnKeyType="done"
-            style={styles.input}
-            value={title}
-          />
-          <Text style={styles.helper}>Start a timer with a clear intention</Text>
-        </View>
-      </View>
-      <View style={styles.durationPicker}>
-        <DurationPicker
-          label="Duration (optional)"
-          value={durationMinutes}
-          onChange={setDurationMinutes}
+      <DebugComponentLabel componentId="ui.activity-input-bar" componentName="ActivityInputBar" />
+      <View style={styles.entryRow}>
+        <TextInput
+          accessibilityLabel="Activity name"
+          onChangeText={setTitle}
+          onSubmitEditing={handleAdd}
+          placeholder="What are you working on?"
+          placeholderTextColor={colors.muted}
+          returnKeyType="done"
+          style={styles.input}
+          value={title}
         />
+        <Pressable
+          accessibilityLabel="Choose focus duration"
+          accessibilityRole="button"
+          onPress={() => setIsDurationPickerVisible(true)}
+          style={styles.durationButton}
+        >
+          <Clock3 color={colors.primary} size={16} strokeWidth={2.4} />
+          <Text style={styles.durationText}>{formatTargetDuration(durationMinutes ?? DEFAULT_TARGET_DURATION_MINUTES)}</Text>
+        </Pressable>
       </View>
       <View style={styles.actions}>
         <Pressable
@@ -123,6 +123,20 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
           {isAdding ? <ActivityIndicator color={colors.surface} /> : <Plus color={colors.surface} size={24} strokeWidth={2.6} />}
         </Pressable>
       </View>
+      <Modal animationType="slide" transparent visible={isDurationPickerVisible} onRequestClose={() => setIsDurationPickerVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable accessibilityLabel="Close duration picker" onPress={() => setIsDurationPickerVisible(false)} style={styles.modalDismissArea} />
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text accessibilityRole="header" style={styles.modalTitle}>Focus duration</Text>
+              <Pressable accessibilityRole="button" onPress={() => setIsDurationPickerVisible(false)} style={styles.doneButton}>
+                <Text style={styles.doneText}>Done</Text>
+              </Pressable>
+            </View>
+            <DurationPicker label="Target" value={durationMinutes} onChange={setDurationMinutes} />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -148,37 +162,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginHorizontal: spacing.xl,
     marginBottom: spacing.lg,
-    padding: spacing.md,
+    padding: spacing.sm,
+    position: 'relative',
     shadowColor: colors.shadow,
     shadowOpacity: 0.08,
     shadowRadius: 18,
     elevation: 3,
   },
-  heading: {
-    alignItems: 'flex-start',
+  entryRow: {
+    alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.sm,
-  },
-  headingCopy: {
-    flex: 1,
-  },
-  durationPicker: {
-    marginTop: spacing.md,
-  },
-  headingIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.primarySoft,
-    borderRadius: radii.pill,
-    height: 32,
-    justifyContent: 'center',
-    marginTop: 4,
-    width: 32,
-  },
-  helper: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
   },
   disabledButton: {
     opacity: 0.45,
@@ -195,7 +189,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     justifyContent: 'flex-end',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   addButton: {
     backgroundColor: colors.primaryDeep,
@@ -207,9 +201,56 @@ const styles = StyleSheet.create({
   },
   input: {
     color: colors.text,
+    flex: 1,
     fontSize: 17,
     fontWeight: '800',
-    minWidth: 210,
     padding: 0,
+  },
+  durationButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primarySoft,
+    borderRadius: radii.pill,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    minHeight: 36,
+    paddingHorizontal: spacing.sm,
+  },
+  durationText: {
+    color: colors.primaryDeep,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  modalBackdrop: {
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalDismissArea: {
+    flex: 1,
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    padding: spacing.xl,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  doneButton: {
+    padding: spacing.xs,
+  },
+  doneText: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '800',
   },
 });

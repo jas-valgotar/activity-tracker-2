@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useAppData } from '../data/AppDataProvider';
 import { ActivityInputBar } from '../ui/ActivityInputBar';
 import { ActivityList } from '../ui/ActivityList';
+import { DebugComponentLabel } from '../ui/DebugComponentFrame';
 import { ScreenHeader } from '../ui/ScreenHeader';
 import { colors } from '../ui/theme';
 
@@ -27,7 +28,8 @@ export function HomeScreen() {
       style={styles.keyboardAvoidingView}
     >
       <View style={styles.container}>
-        <ScreenHeader title="Focus" subtitle="Keep the important things moving." />
+        <DebugComponentLabel componentId="screen.home" componentName="HomeScreen" />
+        <ScreenHeader title="Focus" />
         <ActivityList filter="home" emptyText="No Activity Started" />
         <ActivityInputBar onAdd={handleAddActivity} onPauseCurrentAndStart={pauseCurrentAndCreateActivity} />
       </View>

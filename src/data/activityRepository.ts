@@ -44,17 +44,28 @@ export type ActivityRepository = {
   listActivities(filter: ActivityFilter, sortMode: ActivitySortMode): Promise<ActivityWithLogs[]>;
   getActivityWithLogs(id: string): Promise<ActivityWithLogs | null>;
   getActivityProgressReport(id: string, period: ProgressPeriod, now?: number): Promise<ProgressReport>;
-  pauseActivity(id: string, occurredAt?: number): Promise<void>;
-  resumeActivity(id: string, occurredAt?: number): Promise<void>;
+  pauseActivity(id: string, occurredAt?: number): Promise<ActivityPauseResult>;
+  resumeActivity(id: string, occurredAt?: number): Promise<ActivityLifecycleResult>;
   completeActivity(id: string, occurredAt?: number): Promise<void>;
   softDeleteActivity(id: string): Promise<void>;
-  restoreActivity(id: string): Promise<void>;
+  restoreActivity(id: string): Promise<ActivityLifecycleResult>;
+  completeExcessPausedActivities(occurredAt?: number): Promise<string[]>;
 };
 
-export type ActivityStartResult = {
+export type ActivityLifecycleResult = {
+  autoCompletedActivityIds: string[];
+};
+
+export type ActivityPauseResult = ActivityLifecycleResult & {
+  pausedActivity: ActivityWithLogs | null;
+};
+
+export type ActivityStartResult = ActivityLifecycleResult & {
   activity: ActivityWithLogs;
   pausedActivityId: string | null;
 };
+
+const MAX_PAUSED_FOCUS_ACTIVITIES = 2;
 
 // Creates a repository that owns activity persistence and lifecycle event logging.
 export function createActivityRepository(db: DatabaseClient): ActivityRepository {
@@ -191,7 +202,11 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
         throw new Error('Activity could not be loaded after switching focus.');
       }
 
-      return { activity, pausedActivityId };
+      return {
+        activity,
+        pausedActivityId,
+        autoCompletedActivityIds: await completeExcessPausedActivities(now),
+      };
     },
 
     // Pauses the current active activity and resumes the requested paused activity atomically.
@@ -232,7 +247,11 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
         throw new Error('Activity could not be loaded after switching focus.');
       }
 
-      return { activity, pausedActivityId };
+      return {
+        activity,
+        pausedActivityId,
+        autoCompletedActivityIds: await completeExcessPausedActivities(now),
+      };
     },
 
     // Lists non-deleted activities for the requested screen and sort mode.
@@ -286,7 +305,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
     async pauseActivity(id, occurredAt = Date.now()) {
       const activity = await getActivityRow(id);
       if (!activity || activity.deleted_at !== null || activity.status !== 'active') {
-        return;
+        return { autoCompletedActivityIds: [], pausedActivity: null };
       }
 
       const now = occurredAt;
@@ -294,13 +313,18 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
         ['UPDATE activities SET status = ?, last_accessed_at = ? WHERE id = ?', ['paused', now, id]],
         ['INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)', [createId(), id, 'paused', now]],
       ]);
+
+      return {
+        autoCompletedActivityIds: await completeExcessPausedActivities(now),
+        pausedActivity: await this.getActivityWithLogs(id),
+      };
     },
 
     // Resumes a paused activity and records the resume event.
     async resumeActivity(id, occurredAt = Date.now()) {
       const activity = await getActivityRow(id);
       if (!activity || activity.deleted_at !== null || activity.status !== 'paused') {
-        return;
+        return { autoCompletedActivityIds: [] };
       }
       await ensureNoOtherActiveActivity(id);
 
@@ -309,6 +333,8 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
         ['UPDATE activities SET status = ?, last_accessed_at = ? WHERE id = ?', ['active', now, id]],
         ['INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)', [createId(), id, 'resumed', now]],
       ]);
+
+      return { autoCompletedActivityIds: await completeExcessPausedActivities(now) };
     },
 
     // Marks an activity complete and freezes its elapsed time at completion.
@@ -343,7 +369,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
     async restoreActivity(id) {
       const activity = await getActivityRow(id);
       if (!activity || activity.deleted_at === null) {
-        return;
+        return { autoCompletedActivityIds: [] };
       }
 
       const now = Date.now();
@@ -364,8 +390,43 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
         ]);
       }
       await db.executeBatch(restoreCommands);
+
+      return { autoCompletedActivityIds: await completeExcessPausedActivities(now) };
+    },
+
+    // Completes the oldest paused activities so Focus always contains at most two paused sessions.
+    async completeExcessPausedActivities(occurredAt = Date.now()) {
+      return completeExcessPausedActivities(occurredAt);
     },
   };
+
+  // Marks paused overflow as complete using a deterministic least-recently-accessed, then oldest-started order.
+  async function completeExcessPausedActivities(occurredAt: number): Promise<string[]> {
+    const pausedResult = await db.execute(
+      `SELECT id
+       FROM activities
+       WHERE status = 'paused' AND deleted_at IS NULL
+       ORDER BY last_accessed_at ASC, started_at ASC, id ASC`,
+    );
+    const overflowIds = (pausedResult.rows as Array<{ id: string }>)
+      .slice(0, Math.max(0, pausedResult.rows.length - MAX_PAUSED_FOCUS_ACTIVITIES))
+      .map(row => row.id);
+
+    if (overflowIds.length === 0) {
+      return [];
+    }
+
+    const commands: Array<[string, Array<string | number | null>]> = [];
+    overflowIds.forEach(id => {
+      commands.push(
+        ['UPDATE activities SET status = ?, completed_at = ?, last_accessed_at = ? WHERE id = ?', ['completed', occurredAt, occurredAt, id]],
+        ['INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)', [createId(), id, 'completed', occurredAt]],
+      );
+    });
+    await db.executeBatch(commands);
+
+    return overflowIds;
+  }
 
   // Prevents a second activity from entering the active state.
   async function ensureNoOtherActiveActivity(excludedId?: string): Promise<void> {

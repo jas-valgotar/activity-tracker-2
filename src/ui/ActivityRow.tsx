@@ -1,13 +1,14 @@
-// Overview: Displays one activity row with its timer ring and swipe lifecycle actions.
+// Overview: Displays one concise activity row with its timer ring and swipe lifecycle actions.
 
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckCircle2, ChevronRight, Pause, Play, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, Pause, Play, Trash2 } from 'lucide-react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import type { ActivityWithLogs } from '../domain/activityTypes';
 import { calculateActiveElapsedMs, formatDuration, formatTargetDuration } from '../domain/time';
 import { colors, radii, spacing } from './theme';
 import { TimerRing } from './TimerRing';
+import { DebugComponentLabel } from './DebugComponentFrame';
 import { getActivityPalette } from './activityPalette';
 
 type ActivityRowProps = {
@@ -90,6 +91,7 @@ export function ActivityRow({
         onPress={() => onPress(activity)}
         style={[styles.row, { backgroundColor: palette.background, borderColor: palette.border }]}
       >
+        <DebugComponentLabel componentId={`ui.activity-row:${activity.id}`} componentName="ActivityRow" />
         <View
           style={[
             styles.statusDot,
@@ -99,19 +101,6 @@ export function ActivityRow({
           ]}
         />
         <View style={styles.copy}>
-          <View style={styles.titleLine}>
-            <Text
-              style={[
-                styles.statusLabel,
-                { color: palette.accent },
-                activity.status === 'completed' ? styles.completedLabel : null,
-                activity.status === 'paused' ? styles.pausedLabel : null,
-              ]}
-            >
-              {activity.status === 'active' ? 'IN FOCUS' : activity.status.toUpperCase()}
-            </Text>
-            <ChevronRight color={colors.border} size={18} />
-          </View>
           <Text numberOfLines={2} style={styles.title}>
             {activity.title}
           </Text>
@@ -149,7 +138,7 @@ const styles = StyleSheet.create({
   },
   copy: {
     flex: 1,
-    gap: spacing.xs,
+    gap: 2,
     paddingRight: spacing.md,
   },
   deleteAction: {
@@ -172,9 +161,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: 'row',
-    marginBottom: spacing.md,
-    minHeight: 104,
-    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    minHeight: 88,
+    padding: spacing.md,
+    position: 'relative',
     shadowColor: colors.shadow,
     shadowOpacity: 0.06,
     shadowRadius: 14,
@@ -193,26 +183,9 @@ const styles = StyleSheet.create({
   completedDot: {
     backgroundColor: colors.complete,
   },
-  statusLabel: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  pausedLabel: {
-    color: colors.warning,
-  },
-  completedLabel: {
-    color: colors.complete,
-  },
-  titleLine: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
   title: {
     color: colors.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '900',
   },
 });

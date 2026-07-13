@@ -113,6 +113,22 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
+  // Cancels native work for activities the focus-capacity policy moved into completed history.
+  const cleanupAutoCompletedActivities = useCallback(async (activityIds: string[]) => {
+    activityIds.forEach(activityId => {
+      cancelActivityTargetNotification(activityId);
+      cancelActivityPauseReminder(activityId);
+    });
+
+    await Promise.all(activityIds.map(async activityId => {
+      try {
+        await endLiveActivity(activityId);
+      } catch (error) {
+        console.warn('Could not end Live Activity after focus cleanup', error);
+      }
+    }));
+  }, []);
+
   // Boots SQLite, runs migrations, creates repositories, and restores settings.
   useEffect(() => {
     let isMounted = true;
@@ -132,6 +148,9 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       repositoriesRef.current = { activities, presets, settings };
       setSortModeState(savedSortMode);
       configureActivityNotifications();
+
+      const autoCompletedActivityIds = await activities.completeExcessPausedActivities();
+      await cleanupAutoCompletedActivities(autoCompletedActivityIds);
 
       const storedPresets = await presets.listPresets();
       storedPresets.forEach(preset => {
@@ -165,7 +184,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         clearTimeout(undoTimerRef.current);
       }
     };
-  }, [syncLiveActivityForActivity]);
+  }, [cleanupAutoCompletedActivities, syncLiveActivityForActivity]);
 
   // Returns initialized repositories or throws if a screen calls too early.
   const getRepositories = useCallback(() => {
@@ -195,9 +214,10 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       try {
         const { activities } = getRepositories();
         if (command.action === 'pause') {
-          await activities.pauseActivity(command.activityId, command.occurredAt);
+          const pauseResult = await activities.pauseActivity(command.activityId, command.occurredAt);
           cancelActivityTargetNotification(command.activityId);
-          const pausedActivity = await activities.getActivityWithLogs(command.activityId);
+          await cleanupAutoCompletedActivities(pauseResult.autoCompletedActivityIds);
+          const pausedActivity = pauseResult.pausedActivity;
           if (pausedActivity) {
             scheduleActivityPauseReminder(pausedActivity).catch(() => undefined);
             await syncLiveActivityForActivity(pausedActivity);
@@ -209,6 +229,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
             if (result.pausedActivityId) {
               cancelActivityTargetNotification(result.pausedActivityId);
             }
+            await cleanupAutoCompletedActivities(result.autoCompletedActivityIds);
             cancelActivityPauseReminder(command.activityId);
             scheduleActivityTargetNotification(result.activity).catch(() => undefined);
             await syncLiveActivityForActivity(result.activity);
@@ -233,7 +254,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
         break;
       }
     }
-  }, [bumpActivityRevision, getRepositories, syncLiveActivityForActivity]);
+  }, [bumpActivityRevision, cleanupAutoCompletedActivities, getRepositories, syncLiveActivityForActivity]);
 
   // Replays Lock Screen actions whenever the app becomes active after the widget handled them in the background.
   useEffect(() => {
@@ -314,11 +335,12 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       if (result.pausedActivityId) {
         cancelActivityTargetNotification(result.pausedActivityId);
       }
+      await cleanupAutoCompletedActivities(result.autoCompletedActivityIds);
       scheduleActivityTargetNotification(result.activity).catch(() => undefined);
       await syncLiveActivityForActivity(result.activity);
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
+    [bumpActivityRevision, cleanupAutoCompletedActivities, getRepositories, syncLiveActivityForActivity],
   );
 
   // Pauses the current focus and resumes a selected paused activity after the user confirms a switch.
@@ -329,12 +351,13 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       if (result.pausedActivityId) {
         cancelActivityTargetNotification(result.pausedActivityId);
       }
+      await cleanupAutoCompletedActivities(result.autoCompletedActivityIds);
       cancelActivityPauseReminder(id);
       scheduleActivityTargetNotification(result.activity).catch(() => undefined);
       await syncLiveActivityForActivity(result.activity);
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
+    [bumpActivityRevision, cleanupAutoCompletedActivities, getRepositories, syncLiveActivityForActivity],
   );
 
   // Loads the reusable daily activity presets.
@@ -394,23 +417,25 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const pauseActivity = useCallback(
     async (id: string) => {
       const { activities } = getRepositories();
-      await activities.pauseActivity(id);
+      const result = await activities.pauseActivity(id);
       cancelActivityTargetNotification(id);
-      const pausedActivity = await activities.getActivityWithLogs(id);
+      await cleanupAutoCompletedActivities(result.autoCompletedActivityIds);
+      const pausedActivity = result.pausedActivity;
       if (pausedActivity) {
         scheduleActivityPauseReminder(pausedActivity).catch(() => undefined);
         await syncLiveActivityForActivity(pausedActivity);
       }
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
+    [bumpActivityRevision, cleanupAutoCompletedActivities, getRepositories, syncLiveActivityForActivity],
   );
 
   // Resumes a paused activity.
   const resumeActivity = useCallback(
     async (id: string) => {
       const { activities } = getRepositories();
-      await activities.resumeActivity(id);
+      const result = await activities.resumeActivity(id);
+      await cleanupAutoCompletedActivities(result.autoCompletedActivityIds);
       cancelActivityPauseReminder(id);
       const activity = await activities.getActivityWithLogs(id);
       if (activity) {
@@ -419,7 +444,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       }
       bumpActivityRevision();
     },
-    [bumpActivityRevision, getRepositories, syncLiveActivityForActivity],
+    [bumpActivityRevision, cleanupAutoCompletedActivities, getRepositories, syncLiveActivityForActivity],
   );
 
   // Completes an active or paused activity.
@@ -482,7 +507,8 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     }
 
     const { activities } = getRepositories();
-    await activities.restoreActivity(pendingUndo.activityId);
+    const restoreResult = await activities.restoreActivity(pendingUndo.activityId);
+    await cleanupAutoCompletedActivities(restoreResult.autoCompletedActivityIds);
     const restoredActivity = await activities.getActivityWithLogs(pendingUndo.activityId);
     if (restoredActivity && restoredActivity.status !== 'completed') {
       if (restoredActivity.status === 'active') {
@@ -492,7 +518,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     }
     clearUndo();
     bumpActivityRevision();
-  }, [bumpActivityRevision, clearUndo, getRepositories, pendingUndo, syncLiveActivityForActivity]);
+  }, [bumpActivityRevision, cleanupAutoCompletedActivities, clearUndo, getRepositories, pendingUndo, syncLiveActivityForActivity]);
 
   const value = useMemo<AppDataContextValue>(
     () => ({

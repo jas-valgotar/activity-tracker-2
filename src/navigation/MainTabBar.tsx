@@ -1,4 +1,4 @@
-// Overview: Renders the bottom screen switcher for focus, daily presets, completed, and all activities.
+// Overview: Renders a compact bottom switcher for focus, daily presets, completed, and all activities.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -52,7 +52,7 @@ export function MainTabBar({ state, navigation }: MaterialTopTabBarProps) {
             style={[styles.tabButton, isFocused ? styles.activeTabButton : null]}
           >
             <item.Icon color={tintColor} size={20} strokeWidth={2.4} />
-            <Text style={[styles.tabLabel, isFocused ? styles.activeTabLabel : null]}>{item.label}</Text>
+            {isFocused ? <Text style={[styles.tabLabel, styles.activeTabLabel]}>{item.label}</Text> : null}
           </Pressable>
         );
       })}
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.background,
     flexDirection: 'row',
-    gap: spacing.xs,
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
   },
@@ -85,8 +85,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     justifyContent: 'center',
-    minHeight: 50,
-    paddingHorizontal: spacing.md,
+    minHeight: 46,
+    paddingHorizontal: spacing.sm,
   },
   tabLabel: {
     color: colors.muted,

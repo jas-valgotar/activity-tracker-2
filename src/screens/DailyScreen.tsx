@@ -1,14 +1,15 @@
 // Overview: Shows editable daily activity presets that start normal timed activities.
 
 import React, { useCallback, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
+import { Plus } from 'lucide-react-native';
 import { useAppData } from '../data/AppDataProvider';
 import type { ActivityPreset } from '../domain/activityTypes';
 import type { MainTabParamList } from '../navigation/types';
 import { DailyPresetCard } from '../ui/DailyPresetCard';
-import { DailyPresetComposer } from '../ui/DailyPresetComposer';
+import { DebugComponentLabel } from '../ui/DebugComponentFrame';
 import { KeyboardAwareScrollView } from '../ui/KeyboardAwareScrollView';
 import { PresetEditor } from '../ui/PresetEditor';
 import { ScreenHeader } from '../ui/ScreenHeader';
@@ -37,19 +38,12 @@ export function DailyScreen() {
     setIsEditorVisible(true);
   }
 
-  async function handleCreate(title: string, durationMinutes: number, reminderTimeMinutes: number | null) {
-    try {
-      await createPreset(title, durationMinutes, reminderTimeMinutes);
-      await loadPresets();
-    } catch (error) {
-      Alert.alert('Could Not Add Daily Activity', error instanceof Error ? error.message : 'Please try again.');
-    }
-  }
-
   async function handleSave(title: string, durationMinutes: number, reminderTimeMinutes: number | null) {
     try {
       if (editorPreset) {
         await updatePreset(editorPreset.id, title, durationMinutes, reminderTimeMinutes);
+      } else {
+        await createPreset(title, durationMinutes, reminderTimeMinutes);
       }
       setIsEditorVisible(false);
       await loadPresets();
@@ -110,15 +104,25 @@ export function DailyScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Daily" subtitle="Start a familiar session in one tap." showSort={false} />
+      <DebugComponentLabel componentId="screen.daily" componentName="DailyScreen" />
+      <ScreenHeader
+        title="Daily"
+        showSort={false}
+        trailingAction={
+          <Pressable
+            accessibilityLabel="Add daily activity"
+            accessibilityRole="button"
+            onPress={() => {
+              setEditorPreset(null);
+              setIsEditorVisible(true);
+            }}
+            style={styles.addButton}
+          >
+            <Plus color={colors.surface} size={22} strokeWidth={2.6} />
+          </Pressable>
+        }
+      />
       <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <DailyPresetComposer onSave={handleCreate} />
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionCopy}>
-            <Text style={styles.sectionTitle}>Your routines</Text>
-            <Text style={styles.sectionHint}>Start a reminder-ready activity in one tap.</Text>
-          </View>
-        </View>
         {presets.length > 0 ? presets.map(preset => (
           <DailyPresetCard key={preset.id} onDelete={confirmDelete} onEdit={openEdit} onStart={handleStart} preset={preset} />
         )) : (
@@ -147,25 +151,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.xl,
   },
-  sectionHeader: {
+  addButton: {
     alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.lg,
-  },
-  sectionCopy: {
-    flex: 1,
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontSize: 22,
-    fontWeight: '900',
-  },
-  sectionHint: {
-    color: colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: spacing.xs,
+    backgroundColor: colors.primaryDeep,
+    borderRadius: radii.pill,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
   emptyState: {
     alignItems: 'center',
@@ -173,11 +165,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radii.md,
     borderWidth: 1,
+    marginTop: spacing.xxl,
     padding: spacing.xl,
   },
   emptyTitle: {
     color: colors.text,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '900',
   },
   emptyHint: {
