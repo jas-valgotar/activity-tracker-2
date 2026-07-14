@@ -1,6 +1,6 @@
-// Overview: Collects a title, elapsed duration, and completed date/time for one historical completed activity.
+// Overview: Collects a title, elapsed duration, and current completed date/time for one historical completed activity.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { CalendarDays, Clock3, History } from 'lucide-react-native';
@@ -22,8 +22,22 @@ export function PastActivityComposer({ visible, onClose, onSave }: PastActivityC
   const [title, setTitle] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(DEFAULT_TARGET_DURATION_MINUTES);
   const [completedAt, setCompletedAt] = useState(() => new Date());
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [pickerMode, setPickerMode] = useState<PickerMode | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Refreshes the form timestamp on open and re-evaluates future-time validation while it remains visible.
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    const now = Date.now();
+    setCompletedAt(new Date(now));
+    setCurrentTime(now);
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, [visible]);
 
   // Resets the form whenever the user cancels or finishes saving so later entries start clean.
   function closeAndReset() {
@@ -64,7 +78,7 @@ export function PastActivityComposer({ visible, onClose, onSave }: PastActivityC
     }
   }
 
-  const isFutureCompletion = completedAt.getTime() > Date.now();
+  const isFutureCompletion = completedAt.getTime() > currentTime;
   const isSaveDisabled = !title.trim() || isSaving || isFutureCompletion;
 
   return (

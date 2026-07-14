@@ -14,8 +14,8 @@ const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 export const DEFAULT_TARGET_DURATION_MINUTES = 60;
-export const MIN_TARGET_DURATION_MINUTES = 15;
-export const MAX_TARGET_DURATION_MINUTES = 8 * 60;
+export const MIN_TARGET_DURATION_MINUTES = 1;
+export const MAX_TARGET_DURATION_MINUTES = 24 * 60;
 export const TIMER_FRAME_SEGMENTS = 30;
 
 type ElapsedInput = {

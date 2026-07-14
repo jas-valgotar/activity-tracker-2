@@ -72,7 +72,7 @@ export function DurationPicker({ value, onChange, label = 'Duration', presentati
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
       </View>
-      <Text style={styles.customHint}>Enter any whole number of minutes, from 15 minutes to 8 hours.</Text>
+      <Text style={styles.customHint}>Enter any whole number of minutes, from 1 minute to 24 hours.</Text>
       <View style={styles.stepper}>
         <Pressable
           accessibilityRole="button"
@@ -87,7 +87,7 @@ export function DurationPicker({ value, onChange, label = 'Duration', presentati
           <TextInput
             accessibilityLabel="Custom duration in minutes"
             keyboardType="number-pad"
-            maxLength={3}
+            maxLength={4}
             onChangeText={text => setCustomText(text.replace(/[^0-9]/g, ''))}
             selectTextOnFocus
             style={styles.stepInput}

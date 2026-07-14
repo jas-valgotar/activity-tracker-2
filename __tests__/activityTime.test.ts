@@ -9,6 +9,7 @@ import {
   formatElapsedHours,
   getHighlightedSpikeCount,
   getTargetProgressPercent,
+  isValidTargetDurationMinutes,
 } from '../src/domain/time';
 
 // Creates a minimal activity event for elapsed-time tests.
@@ -54,6 +55,13 @@ describe('activity time calculations', () => {
   it('formats elapsed hours with one decimal place', () => {
     expect(formatElapsedHours(25 * 60 * 1000)).toBe('0.4');
     expect(formatElapsedHours(90 * 60 * 1000)).toBe('1.5');
+  });
+
+  it('allows whole-minute targets from one minute through 24 hours', () => {
+    expect(isValidTargetDurationMinutes(1)).toBe(true);
+    expect(isValidTargetDurationMinutes(24 * 60)).toBe(true);
+    expect(isValidTargetDurationMinutes(0)).toBe(false);
+    expect(isValidTargetDurationMinutes(24 * 60 + 1)).toBe(false);
   });
 
   it('formats compact durations with up to two units from seconds through days', () => {

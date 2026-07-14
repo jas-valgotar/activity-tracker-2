@@ -59,6 +59,14 @@ describe('activity target notifications', () => {
     );
   });
 
+  it('reports denied permission and does not pretend a timer sound was scheduled', async () => {
+    notificationManager.requestPermission.mockResolvedValue(false);
+
+    await expect(notificationService.scheduleActivityTargetNotification(activity({}), 30 * 60 * 1000)).resolves.toBe('denied');
+
+    expect(notificationManager.scheduleTargetNotification).not.toHaveBeenCalled();
+  });
+
   it('cancels but does not schedule paused or completed activities', async () => {
     const now = 30 * 60 * 1000;
 

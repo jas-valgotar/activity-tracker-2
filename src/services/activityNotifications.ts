@@ -1,4 +1,4 @@
-// Overview: Schedules local target-completion notifications and triggers haptics when they arrive in the foreground.
+// Overview: Schedules local activity notifications and reports whether alerts are available to the app UI.
 
 import { NativeModules } from 'react-native';
 import type { ActivityPreset, ActivityWithLogs } from '../domain/activityTypes';
@@ -15,38 +15,49 @@ type ActivityNotificationManager = {
   cancelPresetReminder(presetId: string): void;
 };
 
+export type NotificationAvailability = 'unknown' | 'granted' | 'denied' | 'unavailable';
+
 const PAUSE_REMINDER_DELAY_SECONDS = 30 * 60;
-let permissionPromise: Promise<unknown> | null = null;
+let permissionPromise: Promise<NotificationAvailability> | null = null;
 const notificationManager = NativeModules.ActivityNotificationManager as ActivityNotificationManager | undefined;
 
 // Confirms the native notification module is loaded; the native delegate self-registers at app startup.
-export function configureActivityNotifications(): void {
+export function configureActivityNotifications(): NotificationAvailability {
   if (!notificationManager) {
     console.warn('Activity notification native module is unavailable.');
+    return 'unavailable';
   }
+
+  return 'unknown';
 }
 
-// Requests notification permission once and keeps activity creation independent of permission failures.
-async function ensureNotificationPermission(): Promise<void> {
+// Requests notification permission once while keeping activity creation independent of permission failures.
+async function ensureNotificationPermission(): Promise<NotificationAvailability> {
   if (!notificationManager) {
-    return;
+    return 'unavailable';
   }
 
   if (!permissionPromise) {
-    permissionPromise = notificationManager.requestPermission().catch(error => {
-      console.warn('Activity notifications are unavailable', error);
-    });
+    permissionPromise = notificationManager.requestPermission()
+      .then(isGranted => (isGranted ? 'granted' : 'denied'))
+      .catch(error => {
+        console.warn('Activity notifications are unavailable', error);
+        return 'unavailable';
+      });
   }
 
-  await permissionPromise;
+  return permissionPromise;
 }
 
 // Schedules a local notification for the remaining active time of one activity.
-export async function scheduleActivityTargetNotification(activity: ActivityWithLogs, now = Date.now()): Promise<void> {
+export async function scheduleActivityTargetNotification(
+  activity: ActivityWithLogs,
+  now = Date.now(),
+): Promise<NotificationAvailability> {
   try {
-    await ensureNotificationPermission();
-    if (!notificationManager) {
-      return;
+    const availability = await ensureNotificationPermission();
+    if (availability !== 'granted' || !notificationManager) {
+      return availability;
     }
 
     notificationManager.cancelTargetNotification(activity.id);
@@ -61,7 +72,7 @@ export async function scheduleActivityTargetNotification(activity: ActivityWithL
     const remainingMs = targetMs - elapsedMs;
 
     if (activity.status !== 'active' || remainingMs <= 0) {
-      return;
+      return availability;
     }
 
     await notificationManager.scheduleTargetNotification(
@@ -69,8 +80,10 @@ export async function scheduleActivityTargetNotification(activity: ActivityWithL
       `Nice work — ${activity.title} reached its ${formatTarget(activity.targetDurationMinutes)} target. Take a breath, then start another focus session when ready.`,
       remainingMs / 1000,
     );
+    return availability;
   } catch (error) {
     console.warn('Could not schedule activity target notification', error);
+    return 'unavailable';
   }
 }
 
@@ -80,17 +93,17 @@ export function cancelActivityTargetNotification(activityId: string): void {
 }
 
 // Schedules one gentle reminder for a paused activity so momentum is easy to recover.
-export async function scheduleActivityPauseReminder(activity: ActivityWithLogs): Promise<void> {
+export async function scheduleActivityPauseReminder(activity: ActivityWithLogs): Promise<NotificationAvailability> {
   try {
-    await ensureNotificationPermission();
-    if (!notificationManager) {
-      return;
+    const availability = await ensureNotificationPermission();
+    if (availability !== 'granted' || !notificationManager) {
+      return availability;
     }
 
     notificationManager.cancelPauseReminder(activity.id);
     notificationManager.cancelTargetNotification(activity.id);
     if (activity.status !== 'paused') {
-      return;
+      return availability;
     }
 
     await notificationManager.schedulePauseReminder(
@@ -98,8 +111,10 @@ export async function scheduleActivityPauseReminder(activity: ActivityWithLogs):
       `Ready to resume ${activity.title}? A short focus session can keep your momentum going.`,
       PAUSE_REMINDER_DELAY_SECONDS,
     );
+    return availability;
   } catch (error) {
     console.warn('Could not schedule activity pause reminder', error);
+    return 'unavailable';
   }
 }
 
@@ -109,25 +124,30 @@ export function cancelActivityPauseReminder(activityId: string): void {
 }
 
 // Schedules a repeating local reminder for an optional routine time.
-export async function schedulePresetReminder(preset: ActivityPreset): Promise<void> {
+export async function schedulePresetReminder(preset: ActivityPreset): Promise<NotificationAvailability> {
   if (!notificationManager) {
-    return;
+    return 'unavailable';
   }
 
   notificationManager.cancelPresetReminder(preset.id);
   if (!isValidReminderTimeMinutes(preset.reminderTimeMinutes)) {
-    return;
+    return 'unknown';
   }
 
   try {
-    await ensureNotificationPermission();
+    const availability = await ensureNotificationPermission();
+    if (availability !== 'granted') {
+      return availability;
+    }
     await notificationManager.schedulePresetReminder(
       preset.id,
       `Start ${preset.title} — ${formatTarget(preset.durationMinutes)} focus session.`,
       preset.reminderTimeMinutes,
     );
+    return availability;
   } catch (error) {
     console.warn('Could not schedule preset reminder', error);
+    return 'unavailable';
   }
 }
 

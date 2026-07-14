@@ -24,7 +24,7 @@ struct ActivityTrackerLiveActivity: Widget {
           StatusPill(status: context.state.status)
         }
         DynamicIslandExpandedRegion(.trailing) {
-          Text(formatTarget(context.attributes.targetDurationMinutes))
+          RemainingTimeLabel(context: context)
             .font(.caption2.weight(.bold))
             .foregroundStyle(.secondary)
         }
@@ -39,7 +39,7 @@ struct ActivityTrackerLiveActivity: Widget {
       } compactLeading: {
         Image(systemName: context.state.status == .active ? "timer" : "pause.circle")
       } compactTrailing: {
-        Text(formatTarget(context.attributes.targetDurationMinutes))
+        RemainingTimeLabel(context: context)
           .font(.caption2.weight(.bold))
       } minimal: {
         Image(systemName: context.state.status == .active ? "timer" : "pause.circle")
@@ -64,7 +64,7 @@ private struct ActivityLockScreenView: View {
           StatusPill(status: context.state.status)
         }
         Spacer(minLength: 8)
-        Text(formatTarget(context.attributes.targetDurationMinutes))
+        RemainingTimeLabel(context: context)
           .font(.caption.weight(.bold))
           .foregroundStyle(.secondary)
       }
@@ -146,11 +146,9 @@ private struct ActivityProgressView: View {
 
         HStack(spacing: 0) {
           Spacer(minLength: 0)
-          TimelineView(.periodic(from: .now, by: 1)) { timeline in
-            Text(formatRemainingTime(at: timeline.date))
-              .font(.caption2.weight(.bold))
-              .foregroundStyle(.secondary)
-          }
+          RemainingTimeLabel(context: context)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(.secondary)
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -173,12 +171,22 @@ private struct ActivityProgressView: View {
     return min(1, max(0, Double(context.state.elapsedMilliseconds) / Double(targetMilliseconds)))
   }
 
-  // Displays time left until the goal, or a minus-prefixed overdue duration after the goal passes.
-  private func formatRemainingTime(at date: Date) -> String {
+}
+
+// Updates the compact remaining-time label once per second while preserving the paused value.
+private struct RemainingTimeLabel: View {
+  let context: ActivityViewContext<ActivityLiveActivityAttributes>
+
+  var body: some View {
+    TimelineView(.periodic(from: .now, by: 1)) { timeline in
+      Text(formatSignedDuration(remainingMilliseconds(at: timeline.date)))
+    }
+  }
+
+  private func remainingMilliseconds(at date: Date) -> Int64 {
     let elapsedMilliseconds = context.state.elapsedMillisecondsAt(date)
     let targetMilliseconds = Int64(context.attributes.targetDurationMinutes) * 60 * 1_000
-    let remainingMilliseconds = targetMilliseconds - elapsedMilliseconds
-    return formatSignedDuration(remainingMilliseconds)
+    return targetMilliseconds - elapsedMilliseconds
   }
 }
 
@@ -192,15 +200,6 @@ private struct StatusPill: View {
   }
 }
 
-private func formatTarget(_ minutes: Int) -> String {
-  let hours = minutes / 60
-  let remainingMinutes = minutes % 60
-  if hours == 0 {
-    return "\(minutes)m"
-  }
-  return remainingMinutes == 0 ? "\(hours)h" : "\(hours)h \(remainingMinutes)m"
-}
-
 private func formatSignedDuration(_ milliseconds: Int64) -> String {
   let sign = milliseconds < 0 ? "-" : ""
   let totalSeconds = max(0, abs(milliseconds) / 1_000)
@@ -208,7 +207,10 @@ private func formatSignedDuration(_ milliseconds: Int64) -> String {
   let minutes = (totalSeconds % 3_600) / 60
   let seconds = totalSeconds % 60
   if hours > 0 {
-    return "\(sign)\(hours)h \(minutes)m"
+    return minutes > 0 ? "\(sign)\(hours)h\(minutes)m" : "\(sign)\(hours)h"
   }
-  return "\(sign)\(minutes)m \(seconds)s"
+  if minutes > 0 {
+    return seconds > 0 ? "\(sign)\(minutes)m\(seconds)s" : "\(sign)\(minutes)m"
+  }
+  return "\(sign)\(seconds)s"
 }

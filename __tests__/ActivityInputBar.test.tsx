@@ -40,6 +40,31 @@ describe('ActivityInputBar', () => {
     act(() => tree!.unmount());
   });
 
+  it('refocuses the activity name after the target panel has rendered', () => {
+    const scheduledFrames: FrameRequestCallback[] = [];
+    const requestAnimationFrameSpy = jest.spyOn(global, 'requestAnimationFrame').mockImplementation(callback => {
+      scheduledFrames.push(callback);
+      return scheduledFrames.length;
+    });
+    const cancelAnimationFrameSpy = jest.spyOn(global, 'cancelAnimationFrame').mockImplementation(jest.fn());
+    let tree: renderer.ReactTestRenderer;
+
+    act(() => {
+      tree = renderer.create(<ActivityInputBar onAdd={jest.fn()} onPauseCurrentAndStart={jest.fn()} />);
+    });
+    act(() => {
+      tree!.root.findByProps({ accessibilityLabel: 'Choose focus duration' }).props.onPress();
+    });
+
+    expect(tree!.root.findByProps({ accessibilityLabel: 'Focus duration overlay' })).toBeDefined();
+    expect(scheduledFrames).toHaveLength(1);
+    act(() => scheduledFrames[0](0));
+
+    requestAnimationFrameSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+    act(() => tree!.unmount());
+  });
+
   it('dismisses the keyboard only after successfully adding an activity', async () => {
     const dismissSpy = jest.spyOn(Keyboard, 'dismiss').mockImplementation(jest.fn());
     const onAdd = jest.fn().mockResolvedValue(undefined);

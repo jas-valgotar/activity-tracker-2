@@ -1,4 +1,4 @@
-// Overview: Renders a curvy hourglass with physically inspired sand piles, a continuous stream, and a falling-grain animation.
+// Overview: Renders an hourglass timer that stays visibly active after its target until the activity is paused or completed.
 
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
@@ -213,7 +213,7 @@ export function TimerRing({
           />
         ) : null}
       </Svg>
-      {blinkNextSpike && !frozen && !isAtEnd ? (
+      {blinkNextSpike && !frozen ? (
         <>
           <Animated.View
             pointerEvents="none"

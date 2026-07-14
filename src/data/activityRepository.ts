@@ -457,7 +457,7 @@ function validateActivityInput(title: string, targetDurationMinutes: number): st
     throw new Error('Activity title is required.');
   }
   if (!isValidTargetDurationMinutes(targetDurationMinutes)) {
-    throw new Error('Activity duration must be a whole number of minutes between 15 minutes and 8 hours.');
+    throw new Error('Activity duration must be a whole number of minutes between 1 minute and 24 hours.');
   }
 
   return trimmedTitle;

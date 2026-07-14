@@ -65,4 +65,25 @@ describe('PastActivityComposer', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(testRenderer!.root.findByProps({ accessibilityLabel: 'Past activity name' }).props.value).toBe('');
   });
+
+  it('defaults the completion time to the time the hidden composer is opened', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const onClose = jest.fn();
+    const openedAt = new Date(2026, 6, 13, 18, 30, 0).getTime();
+
+    await act(async () => {
+      testRenderer = renderer.create(<PastActivityComposer visible={false} onClose={onClose} onSave={onSave} />);
+    });
+    nowSpy.mockReturnValue(openedAt);
+    await act(async () => {
+      testRenderer!.update(<PastActivityComposer visible onClose={onClose} onSave={onSave} />);
+    });
+    act(() => testRenderer!.root.findByProps({ accessibilityLabel: 'Past activity name' }).props.onChangeText('Planning'));
+
+    await act(async () => {
+      await testRenderer!.root.findByProps({ accessibilityLabel: 'Save past activity' }).props.onPress();
+    });
+
+    expect(onSave).toHaveBeenCalledWith('Planning', 60, openedAt);
+  });
 });

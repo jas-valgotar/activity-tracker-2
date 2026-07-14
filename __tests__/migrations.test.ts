@@ -1,4 +1,4 @@
-// Overview: Verifies schema upgrades preserve existing activities and seed Home routines safely.
+// Overview: Verifies schema upgrades preserve existing data and seed only startable Home routines.
 
 import { runMigrations } from '../src/data/migrations';
 import { createSqliteTestClient } from '../test-utils/sqliteTestClient';
@@ -79,7 +79,7 @@ describe('database migrations', () => {
     expect(columns.rows.some(row => row.name === 'reminder_time_minutes')).toBe(true);
   });
 
-  it('replaces only legacy built-in routines while preserving user-created routines', async () => {
+  it('adds current built-ins without deleting legacy or customized routines', async () => {
     const db = await createSqliteTestClient();
     await runMigrations(db);
     await db.execute('DELETE FROM settings WHERE key = ?', ['home_routines_v1_seeded']);
@@ -108,10 +108,28 @@ describe('database migrations', () => {
     const routines = await db.execute('SELECT id, title, duration_minutes, reminder_time_minutes FROM activity_presets ORDER BY id ASC');
     expect(routines.rows).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'preset-walk', title: 'Walk', duration_minutes: 15, reminder_time_minutes: null }),
-      expect.objectContaining({ id: 'preset-reading', title: 'Reading', duration_minutes: 10, reminder_time_minutes: null }),
-      expect.objectContaining({ id: 'preset-play', title: 'Play', duration_minutes: 10, reminder_time_minutes: null }),
+      expect.objectContaining({ id: 'preset-reading', title: 'Long Reading', duration_minutes: 30, reminder_time_minutes: null }),
+      expect.objectContaining({ id: 'preset-play', title: 'Play', duration_minutes: 15, reminder_time_minutes: null }),
       expect.objectContaining({ id: 'custom-routine', title: 'Stretch', duration_minutes: 20, reminder_time_minutes: 8 * 60 }),
     ]));
-    expect(routines.rows.some(row => row.id === 'preset-meditation' || row.id === 'preset-deep-work')).toBe(false);
+    expect(routines.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'preset-meditation', title: 'Changed meditation', duration_minutes: 45 }),
+      expect.objectContaining({ id: 'preset-deep-work', title: 'Deep Work', duration_minutes: 60 }),
+    ]));
+  });
+
+  it('repairs routines created by historical builds with durations below the supported minimum', async () => {
+    const db = await createSqliteTestClient();
+    await runMigrations(db);
+    await db.execute('DELETE FROM settings WHERE key = ?', ['preset_minimum_duration_v2']);
+    await db.execute('UPDATE activity_presets SET duration_minutes = ? WHERE id IN (?, ?)', [10, 'preset-reading', 'preset-play']);
+
+    await runMigrations(db);
+
+    const routines = await db.execute('SELECT id, duration_minutes FROM activity_presets WHERE id IN (?, ?)', ['preset-reading', 'preset-play']);
+    expect(routines.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'preset-reading', duration_minutes: 15 }),
+      expect.objectContaining({ id: 'preset-play', duration_minutes: 15 }),
+    ]));
   });
 });

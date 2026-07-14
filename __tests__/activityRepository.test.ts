@@ -48,6 +48,18 @@ describe('activity repository', () => {
     expect((await activities.getActivityWithLogs(created.id))?.targetDurationMinutes).toBe(37);
   });
 
+  it('accepts targets from one minute through 24 hours', async () => {
+    const { activities } = await createRepositories();
+    const oneMinute = await activities.createActivity('Short focus', 1);
+
+    expect(oneMinute.targetDurationMinutes).toBe(1);
+    await activities.pauseActivity(oneMinute.id);
+    await expect(activities.createActivity('Long focus', 24 * 60)).resolves.toMatchObject({
+      targetDurationMinutes: 24 * 60,
+    });
+    await expect(activities.createActivity('Too long', 24 * 60 + 1)).rejects.toThrow('Activity duration must be');
+  });
+
   it('logs a past completed activity with derived start time and standard lifecycle events', async () => {
     const { activities } = await createRepositories();
     const completedAt = new Date(2026, 6, 10, 14, 30, 0).getTime();
@@ -82,7 +94,7 @@ describe('activity repository', () => {
     nowSpy.mockReturnValue(now);
 
     await expect(activities.logPastActivity('   ', 30, now)).rejects.toThrow('Activity title is required.');
-    await expect(activities.logPastActivity('Reading', 14, now)).rejects.toThrow('Activity duration must be');
+    await expect(activities.logPastActivity('Reading', 0, now)).rejects.toThrow('Activity duration must be');
     await expect(activities.logPastActivity('Reading', 30, now + 1)).rejects.toThrow('Past activity must end in the past.');
     expect(await activities.listActivities('all', 'newest')).toHaveLength(0);
   });
@@ -204,13 +216,18 @@ describe('activity repository', () => {
   });
 
   it('seeds and manages Home routines', async () => {
-    const { presets } = await createRepositories();
+    const { activities, presets } = await createRepositories();
     const seeded = await presets.listPresets();
 
     expect(seeded.map(preset => preset.title).sort()).toEqual(['Play', 'Reading', 'Walk']);
     expect(seeded.find(preset => preset.title === 'Walk')).toMatchObject({ durationMinutes: 15, reminderTimeMinutes: null });
-    expect(seeded.find(preset => preset.title === 'Reading')).toMatchObject({ durationMinutes: 10, reminderTimeMinutes: null });
-    expect(seeded.find(preset => preset.title === 'Play')).toMatchObject({ durationMinutes: 10, reminderTimeMinutes: null });
+    expect(seeded.find(preset => preset.title === 'Reading')).toMatchObject({ durationMinutes: 15, reminderTimeMinutes: null });
+    expect(seeded.find(preset => preset.title === 'Play')).toMatchObject({ durationMinutes: 15, reminderTimeMinutes: null });
+
+    await expect(activities.createActivity('Reading', seeded.find(preset => preset.title === 'Reading')?.durationMinutes)).resolves.toMatchObject({
+      status: 'active',
+      targetDurationMinutes: 15,
+    });
 
     nowSpy.mockReturnValue(2_000);
     await presets.createPreset('Yoga', 45, 17 * 60);

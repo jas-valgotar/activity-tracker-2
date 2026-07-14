@@ -1,6 +1,6 @@
 // Overview: Provides a compact home-screen activity composer with on-demand duration settings.
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Clock3, Mic, Plus } from 'lucide-react-native';
 import { createSpeechRecognitionService } from '../services/speech/SpeechRecognitionService';
@@ -23,6 +23,16 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
   const [isAdding, setIsAdding] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isDurationPickerVisible, setIsDurationPickerVisible] = useState(false);
+
+  // Restores title focus after the target panel mounts, once the selection tap has finished dismissing the keyboard.
+  useEffect(() => {
+    if (!isDurationPickerVisible) {
+      return;
+    }
+
+    const frameId = requestAnimationFrame(() => titleInputRef.current?.focus());
+    return () => cancelAnimationFrame(frameId);
+  }, [isDurationPickerVisible]);
 
   // Adds the typed or dictated activity title to the active list.
   async function handleAdd() {
@@ -101,10 +111,7 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
         <Pressable
           accessibilityLabel="Choose focus duration"
           accessibilityRole="button"
-          onPress={() => {
-            setIsDurationPickerVisible(true);
-            titleInputRef.current?.focus();
-          }}
+          onPress={() => setIsDurationPickerVisible(true)}
           style={styles.durationButton}
         >
           <Clock3 color={colors.primary} size={16} strokeWidth={2.4} />

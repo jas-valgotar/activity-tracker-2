@@ -1,4 +1,4 @@
-// Overview: Creates and upgrades the SQLite schema used by the activity tracker.
+// Overview: Creates and upgrades the SQLite schema while preserving routine data and valid timer durations.
 
 import type { DatabaseClient } from './database';
 import { DEFAULT_SORT_MODE } from '../domain/sort';
@@ -56,6 +56,7 @@ export async function runMigrations(db: DatabaseClient): Promise<void> {
   );
   await seedDefaultPresets(db);
   await upgradeLegacyDefaultPresets(db);
+  await normalizeLegacyPresetDurations(db);
 }
 
 // Preserves the most recently accessed active activity and pauses older duplicates before enforcing the unique index.
@@ -111,17 +112,17 @@ async function seedDefaultPresets(db: DatabaseClient): Promise<void> {
     ],
     [
       'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ['preset-reading', 'Reading', 10, null, now, now],
+      ['preset-reading', 'Reading', 15, null, now, now],
     ],
     [
       'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ['preset-play', 'Play', 10, null, now, now],
+      ['preset-play', 'Play', 15, null, now, now],
     ],
     ['INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['daily_presets_seeded', 'true']],
   ]);
 }
 
-// Replaces only the legacy built-in routines once while preserving user-created entries.
+// Adds current built-in routines once without deleting or overwriting a user's existing routines.
 async function upgradeLegacyDefaultPresets(db: DatabaseClient): Promise<void> {
   const upgradeResult = await db.execute('SELECT value FROM settings WHERE key = ?', ['home_routines_v1_seeded']);
   if (upgradeResult.rows[0]?.value === 'true') {
@@ -130,20 +131,37 @@ async function upgradeLegacyDefaultPresets(db: DatabaseClient): Promise<void> {
 
   const now = Date.now();
   await db.executeBatch([
-    ['DELETE FROM activity_presets WHERE id IN (?, ?, ?)', ['preset-meditation', 'preset-deep-work', 'preset-reading']],
     [
       'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
       ['preset-walk', 'Walk', 15, null, now, now],
     ],
     [
       'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ['preset-reading', 'Reading', 10, null, now, now],
+      ['preset-reading', 'Reading', 15, null, now, now],
     ],
     [
       'INSERT OR IGNORE INTO activity_presets (id, title, duration_minutes, reminder_time_minutes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ['preset-play', 'Play', 10, null, now, now],
+      ['preset-play', 'Play', 15, null, now, now],
     ],
     ['INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['home_routines_v1_seeded', 'true']],
+  ]);
+}
+
+// Raises durations from historical builds to the current minimum so every routine can be started.
+async function normalizeLegacyPresetDurations(db: DatabaseClient): Promise<void> {
+  const migrationKey = 'preset_minimum_duration_v2';
+  const migrationResult = await db.execute('SELECT value FROM settings WHERE key = ?', [migrationKey]);
+  if (migrationResult.rows[0]?.value === 'true') {
+    return;
+  }
+
+  const now = Date.now();
+  await db.executeBatch([
+    [
+      'UPDATE activity_presets SET duration_minutes = ?, updated_at = ? WHERE duration_minutes < ?',
+      [15, now, 15],
+    ],
+    ['INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [migrationKey, 'true']],
   ]);
 }
 
