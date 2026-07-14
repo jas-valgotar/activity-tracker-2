@@ -7,8 +7,11 @@ import Foundation
 @available(iOS 17.0, *)
 struct PauseActivityIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Pause Activity"
+  // Keeps the user on the Lock Screen; the app applies the queued command on its next foreground launch.
+  static var openAppWhenRun: Bool = false
 
-  let activityId: String
+  @Parameter(title: "Activity identifier")
+  var activityId: String
 
   init() {
     activityId = ""
@@ -44,8 +47,11 @@ struct PauseActivityIntent: LiveActivityIntent {
 @available(iOS 17.0, *)
 struct ResumeActivityIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Resume Activity"
+  // Keeps the user on the Lock Screen; the app applies the queued command on its next foreground launch.
+  static var openAppWhenRun: Bool = false
 
-  let activityId: String
+  @Parameter(title: "Activity identifier")
+  var activityId: String
 
   init() {
     activityId = ""
@@ -81,8 +87,11 @@ struct ResumeActivityIntent: LiveActivityIntent {
 @available(iOS 17.0, *)
 struct CompleteActivityIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Stop Activity"
+  // Keeps the user on the Lock Screen; the app applies the queued command on its next foreground launch.
+  static var openAppWhenRun: Bool = false
 
-  let activityId: String
+  @Parameter(title: "Activity identifier")
+  var activityId: String
 
   init() {
     activityId = ""

@@ -10,12 +10,13 @@ import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 type ReminderTimePickerProps = {
   value: number | null;
   onChange(value: number | null): void;
+  presentation?: 'inline' | 'modal';
 };
 
 const QUICK_TIMES: Array<number | null> = [null, 8 * 60, 12 * 60, 17 * 60, 20 * 60];
 
 // Renders familiar reminder choices and an editable 24-hour custom time.
-export function ReminderTimePicker({ value, onChange }: ReminderTimePickerProps) {
+export function ReminderTimePicker({ value, onChange, presentation = 'modal' }: ReminderTimePickerProps) {
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [customText, setCustomText] = useState(value === null ? '09:00' : formatTwentyFourHourTime(value));
   const isCustomSelected = value !== null && !QUICK_TIMES.includes(value);
@@ -33,6 +34,40 @@ export function ReminderTimePicker({ value, onChange }: ReminderTimePickerProps)
     onChange(parsed);
     setIsCustomOpen(false);
   }
+
+  const customEditor = (
+    <View style={presentation === 'modal' ? styles.modalCard : styles.inlineCustomCard}>
+      <View style={styles.modalHeader}>
+        <View>
+          <Text style={styles.modalEyebrow}>DAILY REMINDER</Text>
+          <Text style={styles.modalTitle}>When should we remind you?</Text>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Cancel reminder time" onPress={() => setIsCustomOpen(false)} style={styles.cancelButton}>
+          <Text style={styles.cancelText}>Cancel</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.hint}>Use 24-hour time, for example 09:30 or 17:00.</Text>
+      <TextInput
+        accessibilityLabel="Reminder time in 24 hour format"
+        autoFocus={presentation === 'modal'}
+        keyboardType="numbers-and-punctuation"
+        onChangeText={setCustomText}
+        placeholder="09:00"
+        placeholderTextColor={colors.muted}
+        style={styles.timeInput}
+        value={customText}
+      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Use reminder time"
+        disabled={parseReminderTime(customText) === null}
+        onPress={applyCustomTime}
+        style={[styles.doneButton, parseReminderTime(customText) === null ? styles.disabledButton : null]}
+      >
+        <Text style={styles.doneText}>{parseReminderTime(customText) === null ? 'Enter a valid time' : `Remind at ${formatReminderTime(parseReminderTime(customText) as number)}`}</Text>
+      </Pressable>
+    </View>
+  );
 
   return (
     <View>
@@ -71,40 +106,9 @@ export function ReminderTimePicker({ value, onChange }: ReminderTimePickerProps)
           </Pressable>
         </View>
       </View>
-      <Modal animationType="slide" transparent visible={isCustomOpen} onRequestClose={() => setIsCustomOpen(false)}>
-        <KeyboardAwareScrollView contentContainerStyle={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalEyebrow}>DAILY REMINDER</Text>
-                <Text style={styles.modalTitle}>When should we remind you?</Text>
-              </View>
-              <Pressable accessibilityRole="button" accessibilityLabel="Cancel reminder time" onPress={() => setIsCustomOpen(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.hint}>Use 24-hour time, for example 09:30 or 17:00.</Text>
-            <TextInput
-              accessibilityLabel="Reminder time in 24 hour format"
-              autoFocus
-              keyboardType="numbers-and-punctuation"
-              onChangeText={setCustomText}
-              placeholder="09:00"
-              placeholderTextColor={colors.muted}
-              style={styles.timeInput}
-              value={customText}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Use reminder time"
-              disabled={parseReminderTime(customText) === null}
-              onPress={applyCustomTime}
-              style={[styles.doneButton, parseReminderTime(customText) === null ? styles.disabledButton : null]}
-            >
-              <Text style={styles.doneText}>{parseReminderTime(customText) === null ? 'Enter a valid time' : `Remind at ${formatReminderTime(parseReminderTime(customText) as number)}`}</Text>
-            </Pressable>
-          </View>
-        </KeyboardAwareScrollView>
+      {isCustomOpen && presentation === 'inline' ? customEditor : null}
+      <Modal animationType="slide" transparent visible={isCustomOpen && presentation === 'modal'} onRequestClose={() => setIsCustomOpen(false)}>
+        <KeyboardAwareScrollView contentContainerStyle={styles.modalBackdrop}>{customEditor}</KeyboardAwareScrollView>
       </Modal>
     </View>
   );
@@ -171,6 +175,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
     padding: spacing.xl,
+  },
+  inlineCustomCard: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginTop: spacing.md,
+    padding: spacing.md,
   },
   modalHeader: {
     alignItems: 'flex-start',

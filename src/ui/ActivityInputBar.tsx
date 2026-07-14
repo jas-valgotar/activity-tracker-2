@@ -1,7 +1,7 @@
 // Overview: Provides a compact home-screen activity composer with on-demand duration settings.
 
-import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Clock3, Mic, Plus } from 'lucide-react-native';
 import { createSpeechRecognitionService } from '../services/speech/SpeechRecognitionService';
 import { DEFAULT_TARGET_DURATION_MINUTES, formatTargetDuration } from '../domain/time';
@@ -17,6 +17,7 @@ type ActivityInputBarProps = {
 // Renders the bottom activity entry bar on the default home screen.
 export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInputBarProps) {
   const speechService = useMemo(() => createSpeechRecognitionService(), []);
+  const titleInputRef = useRef<TextInput>(null);
   const [title, setTitle] = useState('');
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -35,6 +36,7 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
       await onAdd(trimmedTitle, durationMinutes ?? undefined);
       setTitle('');
       setDurationMinutes(null);
+      Keyboard.dismiss();
     } catch (error) {
       if (isActiveActivityConflict(error)) {
         Alert.alert('Activity In Progress', 'Pause the current activity and start this one?', [
@@ -46,6 +48,7 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
                 await onPauseCurrentAndStart(trimmedTitle, durationMinutes ?? undefined);
                 setTitle('');
                 setDurationMinutes(null);
+                Keyboard.dismiss();
               } catch (switchError) {
                 Alert.alert('Could Not Switch Activity', getErrorMessage(switchError));
               }
@@ -85,6 +88,8 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
       <View style={styles.entryRow}>
         <TextInput
           accessibilityLabel="Activity name"
+          blurOnSubmit={false}
+          ref={titleInputRef}
           onChangeText={setTitle}
           onSubmitEditing={handleAdd}
           placeholder="What are you working on?"
@@ -96,7 +101,10 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
         <Pressable
           accessibilityLabel="Choose focus duration"
           accessibilityRole="button"
-          onPress={() => setIsDurationPickerVisible(true)}
+          onPress={() => {
+            setIsDurationPickerVisible(true);
+            titleInputRef.current?.focus();
+          }}
           style={styles.durationButton}
         >
           <Clock3 color={colors.primary} size={16} strokeWidth={2.4} />
@@ -123,20 +131,24 @@ export function ActivityInputBar({ onAdd, onPauseCurrentAndStart }: ActivityInpu
           {isAdding ? <ActivityIndicator color={colors.surface} /> : <Plus color={colors.surface} size={24} strokeWidth={2.6} />}
         </Pressable>
       </View>
-      <Modal animationType="slide" transparent visible={isDurationPickerVisible} onRequestClose={() => setIsDurationPickerVisible(false)}>
-        <View style={styles.modalBackdrop}>
-          <Pressable accessibilityLabel="Close duration picker" onPress={() => setIsDurationPickerVisible(false)} style={styles.modalDismissArea} />
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text accessibilityRole="header" style={styles.modalTitle}>Focus duration</Text>
-              <Pressable accessibilityRole="button" onPress={() => setIsDurationPickerVisible(false)} style={styles.doneButton}>
-                <Text style={styles.doneText}>Done</Text>
-              </Pressable>
-            </View>
-            <DurationPicker label="Target" value={durationMinutes} onChange={setDurationMinutes} />
+      {isDurationPickerVisible ? (
+        <View accessibilityLabel="Focus duration overlay" style={styles.durationOverlay}>
+          <View style={styles.modalHeader}>
+            <Text accessibilityRole="header" style={styles.modalTitle}>Focus duration</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setIsDurationPickerVisible(false);
+                titleInputRef.current?.focus();
+              }}
+              style={styles.doneButton}
+            >
+              <Text style={styles.doneText}>Done</Text>
+            </Pressable>
           </View>
+          <DurationPicker label="Target" presentation="inline" value={durationMinutes} onChange={setDurationMinutes} />
         </View>
-      </Modal>
+      ) : null}
     </View>
   );
 }
@@ -215,24 +227,27 @@ const styles = StyleSheet.create({
     minHeight: 36,
     paddingHorizontal: spacing.sm,
   },
+  durationOverlay: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    bottom: '100%',
+    elevation: 5,
+    left: 0,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    position: 'absolute',
+    right: 0,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    zIndex: 10,
+  },
   durationText: {
     color: colors.primaryDeep,
     fontSize: 12,
     fontWeight: '900',
-  },
-  modalBackdrop: {
-    backgroundColor: 'rgba(0, 0, 0, 0.28)',
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalDismissArea: {
-    flex: 1,
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    padding: spacing.xl,
   },
   modalHeader: {
     alignItems: 'center',

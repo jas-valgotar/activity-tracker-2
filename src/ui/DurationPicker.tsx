@@ -15,12 +15,13 @@ type DurationPickerProps = {
   value: number | null;
   onChange(value: number | null): void;
   label?: string;
+  presentation?: 'inline' | 'modal';
 };
 
 const QUICK_DURATIONS = [15, 30, 45, 60, 90, 120];
 
-// Renders quick duration chips and a modal stepper for less common targets.
-export function DurationPicker({ value, onChange, label = 'Duration' }: DurationPickerProps) {
+// Renders quick duration chips and a custom stepper that can stay inline with a focused composer.
+export function DurationPicker({ value, onChange, label = 'Duration', presentation = 'modal' }: DurationPickerProps) {
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [customText, setCustomText] = useState(String(value ?? DEFAULT_TARGET_DURATION_MINUTES));
 
@@ -59,6 +60,62 @@ export function DurationPicker({ value, onChange, label = 'Duration' }: Duration
   }
 
   const customValue = getCustomValue();
+
+  const customEditor = (
+    <View style={presentation === 'modal' ? styles.modalCard : styles.inlineCustomCard}>
+      <View style={styles.modalHeader}>
+        <View>
+          <Text style={styles.modalEyebrow}>CUSTOM TARGET</Text>
+          <Text style={styles.modalTitle}>How long should you focus?</Text>
+        </View>
+        <Pressable accessibilityRole="button" onPress={() => setIsCustomOpen(false)} style={styles.cancelButton}>
+          <Text style={styles.cancelText}>Cancel</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.customHint}>Enter any whole number of minutes, from 15 minutes to 8 hours.</Text>
+      <View style={styles.stepper}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Decrease duration"
+          disabled={customValue !== null && customValue <= MIN_TARGET_DURATION_MINUTES}
+          onPress={() => changeCustomValue(-1)}
+          style={[styles.stepButton, customValue !== null && customValue <= MIN_TARGET_DURATION_MINUTES ? styles.disabledStepButton : null]}
+        >
+          <Minus color={colors.primary} size={22} />
+        </Pressable>
+        <View style={styles.inputGroup}>
+          <TextInput
+            accessibilityLabel="Custom duration in minutes"
+            keyboardType="number-pad"
+            maxLength={3}
+            onChangeText={text => setCustomText(text.replace(/[^0-9]/g, ''))}
+            selectTextOnFocus
+            style={styles.stepInput}
+            value={customText}
+          />
+          <Text style={styles.stepUnit}>min</Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Increase duration"
+          disabled={customValue !== null && customValue >= MAX_TARGET_DURATION_MINUTES}
+          onPress={() => changeCustomValue(1)}
+          style={[styles.stepButton, customValue !== null && customValue >= MAX_TARGET_DURATION_MINUTES ? styles.disabledStepButton : null]}
+        >
+          <Plus color={colors.primary} size={22} />
+        </Pressable>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Use custom duration"
+        disabled={customValue === null}
+        onPress={applyCustomValue}
+        style={[styles.doneButton, customValue === null ? styles.disabledDoneButton : null]}
+      >
+        <Text style={styles.doneText}>{customValue === null ? 'Enter a valid duration' : `Use ${formatTargetDuration(customValue)}`}</Text>
+      </Pressable>
+    </View>
+  );
 
   return (
     <View>
@@ -105,61 +162,10 @@ export function DurationPicker({ value, onChange, label = 'Duration' }: Duration
           <ChevronRight color={colors.muted} size={16} strokeWidth={2.6} />
         </View>
       </View>
-      <Modal animationType="slide" transparent visible={isCustomOpen} onRequestClose={() => setIsCustomOpen(false)}>
+      {isCustomOpen && presentation === 'inline' ? customEditor : null}
+      <Modal animationType="slide" transparent visible={isCustomOpen && presentation === 'modal'} onRequestClose={() => setIsCustomOpen(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalEyebrow}>CUSTOM TARGET</Text>
-                <Text style={styles.modalTitle}>How long should you focus?</Text>
-              </View>
-              <Pressable accessibilityRole="button" onPress={() => setIsCustomOpen(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.customHint}>Enter any whole number of minutes, from 15 minutes to 8 hours.</Text>
-            <View style={styles.stepper}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Decrease duration"
-                disabled={customValue !== null && customValue <= MIN_TARGET_DURATION_MINUTES}
-                onPress={() => changeCustomValue(-1)}
-                style={[styles.stepButton, customValue !== null && customValue <= MIN_TARGET_DURATION_MINUTES ? styles.disabledStepButton : null]}
-              >
-                <Minus color={colors.primary} size={22} />
-              </Pressable>
-              <View style={styles.inputGroup}>
-                <TextInput
-                  accessibilityLabel="Custom duration in minutes"
-                  keyboardType="number-pad"
-                  maxLength={3}
-                  onChangeText={text => setCustomText(text.replace(/[^0-9]/g, ''))}
-                  selectTextOnFocus
-                  style={styles.stepInput}
-                  value={customText}
-                />
-                <Text style={styles.stepUnit}>min</Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Increase duration"
-                disabled={customValue !== null && customValue >= MAX_TARGET_DURATION_MINUTES}
-                onPress={() => changeCustomValue(1)}
-                style={[styles.stepButton, customValue !== null && customValue >= MAX_TARGET_DURATION_MINUTES ? styles.disabledStepButton : null]}
-              >
-                <Plus color={colors.primary} size={22} />
-              </Pressable>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Use custom duration"
-              disabled={customValue === null}
-              onPress={applyCustomValue}
-              style={[styles.doneButton, customValue === null ? styles.disabledDoneButton : null]}
-            >
-              <Text style={styles.doneText}>{customValue === null ? 'Enter a valid duration' : `Use ${formatTargetDuration(customValue)}`}</Text>
-            </Pressable>
-          </View>
+          {customEditor}
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -309,6 +315,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.xs,
+  },
+  inlineCustomCard: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginTop: spacing.md,
+    padding: spacing.md,
   },
   stepInput: {
     color: colors.text,

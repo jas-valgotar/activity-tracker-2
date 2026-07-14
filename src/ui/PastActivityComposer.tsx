@@ -1,11 +1,12 @@
 // Overview: Collects a title, elapsed duration, and completed date/time for one historical completed activity.
 
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { CalendarDays, Clock3, History } from 'lucide-react-native';
 import { DEFAULT_TARGET_DURATION_MINUTES, formatTargetDuration } from '../domain/time';
 import { DurationPicker } from './DurationPicker';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import { colors, radii, spacing } from './theme';
 
 type PickerMode = 'date' | 'time';
@@ -68,7 +69,7 @@ export function PastActivityComposer({ visible, onClose, onSave }: PastActivityC
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={closeAndReset}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.backdrop}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.header}>
             <View style={styles.headerCopy}>
@@ -95,7 +96,7 @@ export function PastActivityComposer({ visible, onClose, onSave }: PastActivityC
             style={styles.input}
             value={title}
           />
-          <DurationPicker label="Time spent" value={durationMinutes} onChange={value => setDurationMinutes(value ?? DEFAULT_TARGET_DURATION_MINUTES)} />
+          <DurationPicker label="Time spent" presentation="inline" value={durationMinutes} onChange={value => setDurationMinutes(value ?? DEFAULT_TARGET_DURATION_MINUTES)} />
 
           <View style={styles.completedSection}>
             <Text style={styles.label}>Completed at</Text>
@@ -122,7 +123,7 @@ export function PastActivityComposer({ visible, onClose, onSave }: PastActivityC
             {isSaving ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.saveText}>Log {formatTargetDuration(durationMinutes)} activity</Text>}
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
       {pickerMode ? <NativeDateTimePicker mode={pickerMode} value={completedAt} onChange={handlePickerChange} onDone={() => setPickerMode(null)} /> : null}
     </Modal>
   );
@@ -135,23 +136,19 @@ type NativeDateTimePickerProps = {
   onDone(): void;
 };
 
-// Uses Android's system dialog and an iOS sheet with an explicit Done action.
+// Uses Android's system dialog and an inline iOS picker so the form keyboard stays open.
 function NativeDateTimePicker({ mode, value, onChange, onDone }: NativeDateTimePickerProps) {
   if (Platform.OS === 'android') {
     return <DateTimePicker mode={mode} value={value} onChange={onChange} />;
   }
 
   return (
-    <Modal transparent visible onRequestClose={onDone}>
-      <View style={styles.pickerBackdrop}>
-        <View style={styles.pickerCard}>
-          <DateTimePicker display="spinner" mode={mode} value={value} onChange={onChange} />
-          <Pressable accessibilityLabel="Done choosing completion time" accessibilityRole="button" onPress={onDone} style={styles.pickerDoneButton}>
-            <Text style={styles.pickerDoneText}>Done</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
+    <View style={styles.inlinePicker}>
+      <DateTimePicker display="inline" mode={mode} value={value} onChange={onChange} />
+      <Pressable accessibilityLabel="Done choosing completion time" accessibilityRole="button" onPress={onDone} style={styles.pickerDoneButton}>
+        <Text style={styles.pickerDoneText}>Done</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -241,16 +238,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  pickerBackdrop: {
-    backgroundColor: 'rgba(23, 31, 39, 0.36)',
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  pickerCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    padding: spacing.lg,
+  inlinePicker: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    padding: spacing.sm,
   },
   pickerDoneButton: {
     alignItems: 'center',

@@ -37,4 +37,17 @@ describe('DurationPicker', () => {
 
     expect(selectedDuration).toBe(37);
   });
+
+  it('keeps the custom editor inline when used inside a focused form', () => {
+    let inlineRenderer: renderer.ReactTestRenderer | undefined;
+
+    act(() => {
+      inlineRenderer = renderer.create(<DurationPicker presentation="inline" value={null} onChange={jest.fn()} />);
+    });
+    act(() => inlineRenderer!.root.findByProps({ accessibilityLabel: 'Choose custom duration' }).props.onPress());
+
+    expect(inlineRenderer!.root.findByProps({ accessibilityLabel: 'Custom duration in minutes' })).toBeDefined();
+    expect(inlineRenderer!.root.findByType(require('react-native').Modal).props.visible).toBe(false);
+    act(() => inlineRenderer?.unmount());
+  });
 });

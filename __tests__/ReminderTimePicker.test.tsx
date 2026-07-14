@@ -35,4 +35,17 @@ describe('ReminderTimePicker', () => {
     expect(selected).toBe(18 * 60 + 15);
     act(() => testRenderer?.unmount());
   });
+
+  it('keeps the custom editor inline when used inside a focused form', () => {
+    let testRenderer: renderer.ReactTestRenderer | undefined;
+
+    act(() => {
+      testRenderer = renderer.create(<ReminderTimePicker presentation="inline" value={null} onChange={jest.fn()} />);
+    });
+    act(() => testRenderer!.root.findByProps({ accessibilityLabel: 'Choose custom reminder time' }).props.onPress());
+
+    expect(testRenderer!.root.findByProps({ accessibilityLabel: 'Reminder time in 24 hour format' })).toBeDefined();
+    expect(testRenderer!.root.findByType(require('react-native').Modal).props.visible).toBe(false);
+    act(() => testRenderer?.unmount());
+  });
 });

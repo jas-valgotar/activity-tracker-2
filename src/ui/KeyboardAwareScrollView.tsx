@@ -15,8 +15,11 @@ export function KeyboardAwareScrollView({ children, contentContainerStyle, style
         {...scrollViewProps}
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={contentContainerStyle}
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-        keyboardShouldPersistTaps="handled"
+        // Form controls must remain usable while a text field has focus. Let an explicit
+        // submission or dismissal, rather than a selection tap or a scroll gesture, close
+        // the keyboard.
+        keyboardDismissMode="none"
+        keyboardShouldPersistTaps="always"
       >
         {children}
       </ScrollView>

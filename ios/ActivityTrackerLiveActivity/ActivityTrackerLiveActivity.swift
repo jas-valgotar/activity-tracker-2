@@ -16,7 +16,6 @@ struct ActivityTrackerLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: ActivityLiveActivityAttributes.self) { context in
       ActivityLockScreenView(context: context)
-        .widgetURL(URL(string: "activitytracker://activity/\(context.attributes.activityId)"))
         .activityBackgroundTint(Color(red: 0.97, green: 0.95, blue: 0.91))
         .activitySystemActionForegroundColor(Color(red: 0.07, green: 0.12, blue: 0.16))
     } dynamicIsland: { context in
@@ -76,7 +75,7 @@ private struct ActivityLockScreenView: View {
   }
 }
 
-// Places the essential actions beside progress rather than allocating a separate Lock Screen row.
+// Renders two large, high-contrast control buttons beside the progress indicator.
 private struct ActivityProgressControls: View {
   let context: ActivityViewContext<ActivityLiveActivityAttributes>
 
@@ -84,19 +83,21 @@ private struct ActivityProgressControls: View {
     HStack(spacing: 8) {
       if context.state.status == .active {
         ActivityControlButton(
-          label: "Pause activity",
+          label: "Pause",
           symbol: "pause.fill",
           intent: PauseActivityIntent(activityId: context.attributes.activityId),
+          tint: Color(red: 0.07, green: 0.38, blue: 0.55),
         )
       } else {
         ActivityControlButton(
-          label: "Resume activity",
+          label: "Resume",
           symbol: "play.fill",
           intent: ResumeActivityIntent(activityId: context.attributes.activityId),
+          tint: Color(red: 0.07, green: 0.38, blue: 0.55),
         )
       }
       ActivityControlButton(
-        label: "Complete activity",
+        label: "Stop",
         symbol: "stop.fill",
         intent: CompleteActivityIntent(activityId: context.attributes.activityId),
         tint: .red,
@@ -105,7 +106,7 @@ private struct ActivityProgressControls: View {
   }
 }
 
-// Keeps Lock Screen actions visually compact while retaining clear VoiceOver labels.
+// Keeps Lock Screen actions high contrast with a 56-point square tap target and clear VoiceOver labels.
 private struct ActivityControlButton<Intent: AppIntent>: View {
   let label: String
   let symbol: String
@@ -115,13 +116,14 @@ private struct ActivityControlButton<Intent: AppIntent>: View {
   var body: some View {
     Button(intent: intent) {
       Image(systemName: symbol)
-        .font(.caption.weight(.bold))
-        .frame(width: 44, height: 44)
+        .font(.title3.weight(.bold))
+        .frame(width: 56, height: 56)
+        .foregroundStyle(tint)
+        .background(tint.opacity(0.16), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
     .buttonStyle(.plain)
-    .tint(tint)
     .contentShape(Rectangle())
-    .accessibilityLabel(label)
+    .accessibilityLabel("\(label) activity")
   }
 }
 
@@ -130,22 +132,29 @@ private struct ActivityProgressView: View {
 
   var body: some View {
     HStack(spacing: 10) {
-      Group {
-        if context.state.status == .active, let progressRange {
-          ProgressView(timerInterval: progressRange, countsDown: false)
-            .tint(Color(red: 0.07, green: 0.38, blue: 0.55))
-        } else {
-          ProgressView(value: pausedProgress)
-            .tint(Color(red: 0.75, green: 0.48, blue: 0.08))
-            .overlay(alignment: .trailing) {
-              Text(formatElapsed(context.state.elapsedMilliseconds))
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(.secondary)
-                .offset(y: -14)
-            }
+      VStack(alignment: .leading, spacing: 6) {
+        Group {
+          if context.state.status == .active, let progressRange {
+            ProgressView(timerInterval: progressRange, countsDown: false)
+              .tint(Color(red: 0.07, green: 0.38, blue: 0.55))
+          } else {
+            ProgressView(value: pausedProgress)
+              .tint(Color(red: 0.75, green: 0.48, blue: 0.08))
+          }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+        HStack(spacing: 0) {
+          Spacer(minLength: 0)
+          TimelineView(.periodic(from: .now, by: 1)) { timeline in
+            Text(formatRemainingTime(at: timeline.date))
+              .font(.caption2.weight(.bold))
+              .foregroundStyle(.secondary)
+          }
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
+
       ActivityProgressControls(context: context)
     }
   }
@@ -162,6 +171,14 @@ private struct ActivityProgressView: View {
   private var pausedProgress: Double {
     let targetMilliseconds = max(1, context.attributes.targetDurationMinutes * 60 * 1_000)
     return min(1, max(0, Double(context.state.elapsedMilliseconds) / Double(targetMilliseconds)))
+  }
+
+  // Displays time left until the goal, or a minus-prefixed overdue duration after the goal passes.
+  private func formatRemainingTime(at date: Date) -> String {
+    let elapsedMilliseconds = context.state.elapsedMillisecondsAt(date)
+    let targetMilliseconds = Int64(context.attributes.targetDurationMinutes) * 60 * 1_000
+    let remainingMilliseconds = targetMilliseconds - elapsedMilliseconds
+    return formatSignedDuration(remainingMilliseconds)
   }
 }
 
@@ -184,13 +201,14 @@ private func formatTarget(_ minutes: Int) -> String {
   return remainingMinutes == 0 ? "\(hours)h" : "\(hours)h \(remainingMinutes)m"
 }
 
-private func formatElapsed(_ milliseconds: Int64) -> String {
-  let totalSeconds = max(0, milliseconds / 1_000)
+private func formatSignedDuration(_ milliseconds: Int64) -> String {
+  let sign = milliseconds < 0 ? "-" : ""
+  let totalSeconds = max(0, abs(milliseconds) / 1_000)
   let hours = totalSeconds / 3_600
   let minutes = (totalSeconds % 3_600) / 60
   let seconds = totalSeconds % 60
   if hours > 0 {
-    return "\(hours)h \(minutes)m"
+    return "\(sign)\(hours)h \(minutes)m"
   }
-  return "\(minutes)m \(seconds)s"
+  return "\(sign)\(minutes)m \(seconds)s"
 }

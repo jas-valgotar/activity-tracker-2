@@ -76,6 +76,7 @@ export function PresetEditor({ visible, preset, draft = null, onClose, onSave }:
             value={title}
           />
           <DurationPicker
+            presentation="inline"
             value={durationMinutes}
             onChange={nextValue => {
               if (nextValue !== null) {
@@ -83,7 +84,7 @@ export function PresetEditor({ visible, preset, draft = null, onClose, onSave }:
               }
             }}
           />
-          <ReminderTimePicker value={reminderTimeMinutes} onChange={setReminderTimeMinutes} />
+          <ReminderTimePicker presentation="inline" value={reminderTimeMinutes} onChange={setReminderTimeMinutes} />
           <Pressable accessibilityRole="button" disabled={!title.trim() || isSaving} onPress={handleSave} style={[styles.saveButton, !title.trim() ? styles.disabledButton : null]}>
             <Text style={styles.saveText}>{preset ? 'Save changes' : 'Add routine'}</Text>
           </Pressable>
