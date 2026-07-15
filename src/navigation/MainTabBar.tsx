@@ -1,9 +1,9 @@
-// Overview: Renders a compact bottom switcher for Home, completed, and all activities.
+// Overview: Renders a compact bottom switcher for Home and all activities.
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
-import { CheckCircle2, House, List } from 'lucide-react-native';
+import { House, List } from 'lucide-react-native';
 import type { MainTabParamList } from './types';
 import { colors, radii, spacing } from '../ui/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,10 +13,9 @@ type TabRouteName = keyof MainTabParamList;
 const tabItems: Array<{
   name: TabRouteName;
   label: string;
-  Icon: typeof CheckCircle2;
+  Icon: typeof House;
 }> = [
   { name: 'Home', label: 'Home', Icon: House },
-  { name: 'Completed', label: 'Done', Icon: CheckCircle2 },
   { name: 'All', label: 'All', Icon: List },
 ];
 

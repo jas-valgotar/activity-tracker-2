@@ -5,6 +5,13 @@ import renderer, { act } from 'react-test-renderer';
 import { Keyboard } from 'react-native';
 import { ActivityInputBar } from '../src/ui/ActivityInputBar';
 
+type AnimationFrameCallback = (time: number) => void;
+
+type AnimationFrameGlobal = {
+  cancelAnimationFrame(requestId: number): void;
+  requestAnimationFrame(callback: AnimationFrameCallback): number;
+};
+
 jest.mock('../src/services/speech/SpeechRecognitionService', () => ({
   createSpeechRecognitionService: () => ({ recognizeOnce: jest.fn() }),
 }));
@@ -41,12 +48,13 @@ describe('ActivityInputBar', () => {
   });
 
   it('refocuses the activity name after the target panel has rendered', () => {
-    const scheduledFrames: FrameRequestCallback[] = [];
-    const requestAnimationFrameSpy = jest.spyOn(global, 'requestAnimationFrame').mockImplementation(callback => {
+    const animationFrameGlobal = globalThis as unknown as AnimationFrameGlobal;
+    const scheduledFrames: AnimationFrameCallback[] = [];
+    const requestAnimationFrameSpy = jest.spyOn(animationFrameGlobal, 'requestAnimationFrame').mockImplementation(callback => {
       scheduledFrames.push(callback);
       return scheduledFrames.length;
     });
-    const cancelAnimationFrameSpy = jest.spyOn(global, 'cancelAnimationFrame').mockImplementation(jest.fn());
+    const cancelAnimationFrameSpy = jest.spyOn(animationFrameGlobal, 'cancelAnimationFrame').mockImplementation(jest.fn());
     let tree: renderer.ReactTestRenderer;
 
     act(() => {

@@ -1,8 +1,8 @@
-// Overview: Verifies the Completed screen exposes and opens the historical activity form.
+// Overview: Verifies the All screen exposes and opens the historical activity form.
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
-import { CompletedScreen } from '../src/screens/CompletedScreen';
+import { AllActivitiesScreen } from '../src/screens/AllActivitiesScreen';
 
 const mockLogPastActivity = jest.fn().mockResolvedValue(undefined);
 
@@ -27,12 +27,12 @@ jest.mock('../src/ui/PastActivityComposer', () => {
   };
 });
 
-describe('CompletedScreen', () => {
-  it('opens the past-activity form from the Completed screen', () => {
+describe('AllActivitiesScreen', () => {
+  it('opens the past-activity form from the All screen', () => {
     let testRenderer: renderer.ReactTestRenderer | undefined;
 
     act(() => {
-      testRenderer = renderer.create(<CompletedScreen />);
+      testRenderer = renderer.create(<AllActivitiesScreen />);
     });
     act(() => testRenderer!.root.findByProps({ accessibilityLabel: 'Log past activity' }).props.onPress());
 

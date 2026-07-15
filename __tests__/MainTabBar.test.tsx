@@ -1,4 +1,4 @@
-// Overview: Verifies the compact bottom navigation exposes only Home, Done, and All.
+// Overview: Verifies the compact bottom navigation exposes only Home and All.
 
 import React from 'react';
 import renderer, { act } from 'react-test-renderer';
@@ -9,11 +9,11 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 describe('MainTabBar', () => {
-  it('does not render a Daily destination', () => {
+  it('does not render removed destinations', () => {
     let tree: renderer.ReactTestRenderer | undefined;
     const state = {
       index: 0,
-      routes: [{ key: 'home', name: 'Home' }, { key: 'done', name: 'Completed' }, { key: 'all', name: 'All' }],
+      routes: [{ key: 'home', name: 'Home' }, { key: 'all', name: 'All' }],
     };
     const navigation = { emit: jest.fn(), navigate: jest.fn() };
 
@@ -31,8 +31,8 @@ describe('MainTabBar', () => {
     });
 
     expect(tree!.root.findAllByProps({ accessibilityLabel: 'Show Daily activities' })).toHaveLength(0);
+    expect(tree!.root.findAllByProps({ accessibilityLabel: 'Show Done activities' })).toHaveLength(0);
     expect(tree!.root.findByProps({ accessibilityLabel: 'Show Home activities' })).toBeTruthy();
-    expect(tree!.root.findByProps({ accessibilityLabel: 'Show Done activities' })).toBeTruthy();
     expect(tree!.root.findByProps({ accessibilityLabel: 'Show All activities' })).toBeTruthy();
   });
 });
