@@ -4,7 +4,9 @@ import type { ActivityWithLogs } from '../src/domain/activityTypes';
 
 const notificationManager = {
   requestPermission: jest.fn<Promise<boolean>, []>(),
-  scheduleTargetNotification: jest.fn<Promise<void>, [string, string, number]>(),
+  scheduleTargetNotification: jest.fn<Promise<void>, [string, string, number, number, number]>(),
+  startGoalAlert: jest.fn<void, [string, number, number]>(),
+  stopGoalAlert: jest.fn<void, [string]>(),
   schedulePauseReminder: jest.fn<Promise<void>, [string, string, number]>(),
   schedulePresetReminder: jest.fn<Promise<void>, [string, string, number]>(),
   cancelTargetNotification: jest.fn<void, [string]>(),
@@ -56,6 +58,8 @@ describe('activity target notifications', () => {
       'activity-1',
       'Nice work — Meditation reached its 1 hour target. Take a breath, then start another focus session when ready.',
       30 * 60,
+      10,
+      1,
     );
   });
 
@@ -65,6 +69,21 @@ describe('activity target notifications', () => {
     await expect(notificationService.scheduleActivityTargetNotification(activity({}), 30 * 60 * 1000)).resolves.toBe('denied');
 
     expect(notificationManager.scheduleTargetNotification).not.toHaveBeenCalled();
+  });
+
+  it('starts and stops app-controlled foreground goal playback', () => {
+    notificationService.startGoalAlert('activity-1');
+    notificationService.stopGoalAlert('activity-1');
+
+    expect(notificationManager.startGoalAlert).toHaveBeenCalledWith('activity-1', 10, 1);
+    expect(notificationManager.stopGoalAlert).toHaveBeenCalledWith('activity-1');
+  });
+
+  it('stops playback when pending target work is cancelled', () => {
+    notificationService.cancelActivityTargetNotification('activity-1');
+
+    expect(notificationManager.cancelTargetNotification).toHaveBeenCalledWith('activity-1');
+    expect(notificationManager.stopGoalAlert).toHaveBeenCalledWith('activity-1');
   });
 
   it('cancels but does not schedule paused or completed activities', async () => {

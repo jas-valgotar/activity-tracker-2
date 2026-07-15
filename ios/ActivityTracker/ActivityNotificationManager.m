@@ -1,6 +1,6 @@
-// Overview: Provides local target notifications, foreground presentation, and native iPhone vibration.
+// Overview: Schedules activity notifications and coordinates foreground or lock-screen goal-alarm controls.
 
-#import <AudioToolbox/AudioToolbox.h>
+#import "ActivityGoalAlarmPlayer.h"
 #import <React/RCTBridgeModule.h>
 #import <UserNotifications/UserNotifications.h>
 
@@ -8,6 +8,11 @@ static NSString *const ActivityTargetNotificationType = @"activity-target-reache
 static NSString *const ActivityPauseReminderType = @"activity-pause-reminder";
 static NSString *const ActivityPresetReminderType = @"activity-preset-reminder";
 static NSString *const ActivityFocusNotificationCategory = @"activity-focus-notification";
+static NSString *const ActivityTargetNotificationCategory = @"activity-target-notification";
+static NSString *const ActivityStopGoalAlarmAction = @"activity-stop-goal-alarm";
+static NSString *const ActivityGoalAlarmSound = @"goal-alarm.wav";
+static NSString *const ActivityGoalAlarmDurationKey = @"alarmDurationSeconds";
+static NSString *const ActivityGoalAlarmVibrationIntervalKey = @"vibrationIntervalSeconds";
 
 @interface ActivityNotificationManager : NSObject <RCTBridgeModule, UNUserNotificationCenterDelegate>
 @end
@@ -30,11 +35,18 @@ RCT_EXPORT_MODULE();
     UNNotificationAction *openFocusAction = [UNNotificationAction actionWithIdentifier:@"activity-open-focus"
                                                                                      title:@"Open Focus"
                                                                                    options:UNNotificationActionOptionForeground];
-    UNNotificationCategory *category = [UNNotificationCategory categoryWithIdentifier:ActivityFocusNotificationCategory
-                                                                                  actions:@[openFocusAction]
-                                                                        intentIdentifiers:@[]
-                                                                                  options:0];
-    [center setNotificationCategories:[NSSet setWithObject:category]];
+    UNNotificationAction *stopAlarmAction = [UNNotificationAction actionWithIdentifier:ActivityStopGoalAlarmAction
+                                                                                  title:@"Stop alarm"
+                                                                                options:UNNotificationActionOptionNone];
+    UNNotificationCategory *targetCategory = [UNNotificationCategory categoryWithIdentifier:ActivityTargetNotificationCategory
+                                                                                       actions:@[stopAlarmAction, openFocusAction]
+                                                                             intentIdentifiers:@[]
+                                                                                       options:0];
+    UNNotificationCategory *focusCategory = [UNNotificationCategory categoryWithIdentifier:ActivityFocusNotificationCategory
+                                                                                      actions:@[openFocusAction]
+                                                                            intentIdentifiers:@[]
+                                                                                      options:0];
+    [center setNotificationCategories:[NSSet setWithObjects:targetCategory, focusCategory, nil]];
   }
   return self;
 }
@@ -60,17 +72,21 @@ RCT_REMAP_METHOD(scheduleTargetNotification,
                  scheduleTargetNotification:(NSString *)activityId
                  title:(NSString *)title
                  delaySeconds:(nonnull NSNumber *)delaySeconds
+                 alarmDurationSeconds:(nonnull NSNumber *)alarmDurationSeconds
+                 vibrationIntervalSeconds:(nonnull NSNumber *)vibrationIntervalSeconds
                  resolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject)
 {
   UNMutableNotificationContent *content = [UNMutableNotificationContent new];
   content.title = @"Focus target reached";
   content.body = title;
-  content.categoryIdentifier = ActivityFocusNotificationCategory;
-  content.sound = [UNNotificationSound defaultSound];
+  content.categoryIdentifier = ActivityTargetNotificationCategory;
+  content.sound = [UNNotificationSound soundNamed:ActivityGoalAlarmSound];
   content.userInfo = @{
     @"activityId": activityId,
     @"type": ActivityTargetNotificationType,
+    ActivityGoalAlarmDurationKey: alarmDurationSeconds,
+    ActivityGoalAlarmVibrationIntervalKey: vibrationIntervalSeconds,
   };
 
   NSTimeInterval delay = MAX(1.0, delaySeconds.doubleValue);
@@ -168,7 +184,28 @@ RCT_REMAP_METHOD(schedulePresetReminder,
 RCT_EXPORT_METHOD(cancelTargetNotification:(NSString *)activityId)
 {
   NSString *identifier = [NSString stringWithFormat:@"activity-target-%@", activityId];
-  [[UNUserNotificationCenter currentNotificationCenter] removePendingNotificationRequestsWithIdentifiers:@[identifier]];
+  UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+  [center removePendingNotificationRequestsWithIdentifiers:@[identifier]];
+  [center removeDeliveredNotificationsWithIdentifiers:@[identifier]];
+  [[ActivityGoalAlarmPlayer sharedPlayer] stopAlarmForActivityId:activityId];
+}
+
+// Starts the app-controlled foreground alarm; duplicate requests for the same activity are ignored.
+RCT_EXPORT_METHOD(startGoalAlert:(NSString *)activityId
+                  alarmDurationSeconds:(nonnull NSNumber *)alarmDurationSeconds
+                  vibrationIntervalSeconds:(nonnull NSNumber *)vibrationIntervalSeconds)
+{
+  [[ActivityGoalAlarmPlayer sharedPlayer] startAlarmForActivityId:activityId
+                                                  durationSeconds:alarmDurationSeconds.doubleValue
+                                         vibrationIntervalSeconds:vibrationIntervalSeconds.doubleValue];
+}
+
+// Stops current sound and vibration and clears the matching delivered notification.
+RCT_EXPORT_METHOD(stopGoalAlert:(NSString *)activityId)
+{
+  NSString *identifier = [NSString stringWithFormat:@"activity-target-%@", activityId];
+  [[UNUserNotificationCenter currentNotificationCenter] removeDeliveredNotificationsWithIdentifiers:@[identifier]];
+  [[ActivityGoalAlarmPlayer sharedPlayer] stopAlarmForActivityId:activityId];
 }
 
 // Cancels the pending reminder for an activity.
@@ -185,14 +222,23 @@ RCT_EXPORT_METHOD(cancelPresetReminder:(NSString *)presetId)
   [[UNUserNotificationCenter currentNotificationCenter] removePendingNotificationRequestsWithIdentifiers:@[identifier]];
 }
 
-// Presents target notifications while the app is open and provides direct haptic feedback.
+// Starts app-controlled playback in the foreground and suppresses duplicate system-controlled sound.
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center
        willPresentNotification:(UNNotification *)notification
          withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler
 {
   NSString *notificationType = notification.request.content.userInfo[@"type"];
   if ([notificationType isEqual:ActivityTargetNotificationType]) {
-    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
+    NSString *activityId = notification.request.content.userInfo[@"activityId"];
+    if (activityId) {
+      NSNumber *durationSeconds = notification.request.content.userInfo[ActivityGoalAlarmDurationKey];
+      NSNumber *vibrationIntervalSeconds = notification.request.content.userInfo[ActivityGoalAlarmVibrationIntervalKey];
+      [[ActivityGoalAlarmPlayer sharedPlayer] startAlarmForActivityId:activityId
+                                                      durationSeconds:durationSeconds.doubleValue
+                                             vibrationIntervalSeconds:vibrationIntervalSeconds.doubleValue];
+    }
+    completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionBadge);
+    return;
   }
   completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound |
                     UNNotificationPresentationOptionBadge);
@@ -203,6 +249,18 @@ RCT_EXPORT_METHOD(cancelPresetReminder:(NSString *)presetId)
  didReceiveNotificationResponse:(UNNotificationResponse *)response
           withCompletionHandler:(void (^)(void))completionHandler
 {
+  NSString *notificationType = response.notification.request.content.userInfo[@"type"];
+  if ([response.actionIdentifier isEqual:ActivityStopGoalAlarmAction] &&
+      [notificationType isEqual:ActivityTargetNotificationType]) {
+    NSString *activityId = response.notification.request.content.userInfo[@"activityId"];
+    if (activityId) {
+      NSString *identifier = [NSString stringWithFormat:@"activity-target-%@", activityId];
+      UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+      [center removePendingNotificationRequestsWithIdentifiers:@[identifier]];
+      [center removeDeliveredNotificationsWithIdentifiers:@[identifier]];
+      [[ActivityGoalAlarmPlayer sharedPlayer] stopAlarmForActivityId:activityId];
+    }
+  }
   completionHandler();
 }
 

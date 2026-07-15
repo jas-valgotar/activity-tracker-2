@@ -14,6 +14,8 @@
 		A10000000000000000000001 /* ActivitySpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* ActivitySpeechRecognizer.swift */; };
 		A10000000000000000000003 /* ActivitySpeechRecognizerBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* ActivitySpeechRecognizerBridge.m */; };
 		A200000000000001 /* ActivityNotificationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A200000000000002 /* ActivityNotificationManager.m */; };
+		A300000000000001 /* ActivityGoalAlarmPlayer.m in Sources */ = {isa = PBXBuildFile; fileRef = A300000000000002 /* ActivityGoalAlarmPlayer.m */; };
+		A300000000000004 /* goal-alarm.wav in Resources */ = {isa = PBXBuildFile; fileRef = A300000000000005 /* goal-alarm.wav */; };
 		B100000000000001 /* ActivityLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000001 /* ActivityLiveActivityAttributes.swift */; };
 		B100000000000002 /* ActivityLiveActivityCommandStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000002 /* ActivityLiveActivityCommandStore.swift */; };
 		B100000000000003 /* ActivityLiveActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000003 /* ActivityLiveActivityIntents.swift */; };
@@ -63,6 +65,9 @@
 		A10000000000000000000002 /* ActivitySpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivitySpeechRecognizer.swift; path = ActivityTracker/ActivitySpeechRecognizer.swift; sourceTree = "<group>"; };
 		A10000000000000000000004 /* ActivitySpeechRecognizerBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ActivitySpeechRecognizerBridge.m; path = ActivityTracker/ActivitySpeechRecognizerBridge.m; sourceTree = "<group>"; };
 		A200000000000002 /* ActivityNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ActivityNotificationManager.m; path = ActivityTracker/ActivityNotificationManager.m; sourceTree = "<group>"; };
+		A300000000000002 /* ActivityGoalAlarmPlayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ActivityGoalAlarmPlayer.m; path = ActivityTracker/ActivityGoalAlarmPlayer.m; sourceTree = "<group>"; };
+		A300000000000003 /* ActivityGoalAlarmPlayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ActivityGoalAlarmPlayer.h; path = ActivityTracker/ActivityGoalAlarmPlayer.h; sourceTree = "<group>"; };
+		A300000000000005 /* goal-alarm.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; name = "goal-alarm.wav"; path = "ActivityTracker/goal-alarm.wav"; sourceTree = "<group>"; };
 		B200000000000001 /* ActivityLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityLiveActivityAttributes.swift; path = ActivityTracker/ActivityLiveActivityAttributes.swift; sourceTree = "<group>"; };
 		B200000000000002 /* ActivityLiveActivityCommandStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityLiveActivityCommandStore.swift; path = ActivityTracker/ActivityLiveActivityCommandStore.swift; sourceTree = "<group>"; };
 		B200000000000003 /* ActivityLiveActivityIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityLiveActivityIntents.swift; path = ActivityTracker/ActivityLiveActivityIntents.swift; sourceTree = "<group>"; };
@@ -100,6 +105,9 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				A200000000000002 /* ActivityNotificationManager.m */,
+				A300000000000003 /* ActivityGoalAlarmPlayer.h */,
+				A300000000000002 /* ActivityGoalAlarmPlayer.m */,
+				A300000000000005 /* goal-alarm.wav */,
 				B200000000000001 /* ActivityLiveActivityAttributes.swift */,
 				B200000000000002 /* ActivityLiveActivityCommandStore.swift */,
 				B200000000000003 /* ActivityLiveActivityIntents.swift */,
@@ -257,6 +265,7 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				E5737DE2C23F15ABDCF74D7E /* PrivacyInfo.xcprivacy in Resources */,
+				A300000000000004 /* goal-alarm.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -351,6 +360,7 @@
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A200000000000001 /* ActivityNotificationManager.m in Sources */,
+				A300000000000001 /* ActivityGoalAlarmPlayer.m in Sources */,
 				B100000000000001 /* ActivityLiveActivityAttributes.swift in Sources */,
 				B100000000000002 /* ActivityLiveActivityCommandStore.swift in Sources */,
 				B100000000000003 /* ActivityLiveActivityIntents.swift in Sources */,

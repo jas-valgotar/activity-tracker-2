@@ -4,10 +4,22 @@ import { NativeModules } from 'react-native';
 import type { ActivityPreset, ActivityWithLogs } from '../domain/activityTypes';
 import { calculateActiveElapsedMs } from '../domain/time';
 import { isValidReminderTimeMinutes } from '../domain/reminderTime';
+import {
+  COMPLETION_NOTICE_DURATION_SECONDS,
+  GOAL_ALERT_VIBRATION_INTERVAL_MS,
+} from '../domain/completionTimer';
 
 type ActivityNotificationManager = {
   requestPermission(): Promise<boolean>;
-  scheduleTargetNotification(activityId: string, title: string, delaySeconds: number): Promise<void>;
+  scheduleTargetNotification(
+    activityId: string,
+    title: string,
+    delaySeconds: number,
+    alarmDurationSeconds: number,
+    vibrationIntervalSeconds: number,
+  ): Promise<void>;
+  startGoalAlert(activityId: string, alarmDurationSeconds: number, vibrationIntervalSeconds: number): void;
+  stopGoalAlert(activityId: string): void;
   schedulePauseReminder(activityId: string, title: string, delaySeconds: number): Promise<void>;
   schedulePresetReminder(presetId: string, title: string, reminderTimeMinutes: number): Promise<void>;
   cancelTargetNotification(activityId: string): void;
@@ -79,6 +91,8 @@ export async function scheduleActivityTargetNotification(
       activity.id,
       `Nice work — ${activity.title} reached its ${formatTarget(activity.targetDurationMinutes)} target. Take a breath, then start another focus session when ready.`,
       remainingMs / 1000,
+      COMPLETION_NOTICE_DURATION_SECONDS,
+      GOAL_ALERT_VIBRATION_INTERVAL_MS / 1_000,
     );
     return availability;
   } catch (error) {
@@ -90,6 +104,21 @@ export async function scheduleActivityTargetNotification(
 // Cancels the pending target notification for an activity after pause, completion, or deletion.
 export function cancelActivityTargetNotification(activityId: string): void {
   notificationManager?.cancelTargetNotification(activityId);
+  notificationManager?.stopGoalAlert(activityId);
+}
+
+// Starts idempotent native sound and vibration for a foreground goal crossing.
+export function startGoalAlert(activityId: string): void {
+  notificationManager?.startGoalAlert(
+    activityId,
+    COMPLETION_NOTICE_DURATION_SECONDS,
+    GOAL_ALERT_VIBRATION_INTERVAL_MS / 1_000,
+  );
+}
+
+// Stops native goal sound and vibration without changing future notification scheduling.
+export function stopGoalAlert(activityId: string): void {
+  notificationManager?.stopGoalAlert(activityId);
 }
 
 // Schedules one gentle reminder for a paused activity so momentum is easy to recover.

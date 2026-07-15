@@ -42,8 +42,8 @@ export function CompletionTimerNotice() {
         <Text style={styles.title}>Goal reached</Text>
         <Text numberOfLines={2} style={styles.message}>{completionNotice.title} reached its target. {secondsRemaining}s</Text>
       </View>
-      <Pressable accessibilityLabel="Dismiss completion notice" accessibilityRole="button" onPress={dismissCompletionNotice} style={styles.dismissButton}>
-        <Text style={styles.dismissText}>Dismiss</Text>
+      <Pressable accessibilityLabel="Stop goal alarm" accessibilityRole="button" onPress={dismissCompletionNotice} style={styles.dismissButton}>
+        <Text style={styles.dismissText}>Stop alarm</Text>
       </Pressable>
     </View>
   );

@@ -28,7 +28,13 @@ import {
   scheduleActivityPauseReminder,
   schedulePresetReminder,
   scheduleActivityTargetNotification,
+  startGoalAlert,
+  stopGoalAlert,
 } from '../services/activityNotifications';
+import {
+  ForegroundGoalAlertScheduler,
+  type ForegroundGoalAlert,
+} from '../services/foregroundGoalAlertScheduler';
 import {
   acknowledgeLiveActivityCommands,
   consumeLiveActivityCommands,
@@ -90,8 +96,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
     settings: SettingsRepository;
   } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const completionNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const completionNoticeActivityIdRef = useRef<string | null>(null);
+  const completionAlertSchedulerRef = useRef<ForegroundGoalAlertScheduler | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [initializationAttempt, setInitializationAttempt] = useState(0);
@@ -100,6 +105,21 @@ export function AppDataProvider({ children }: PropsWithChildren) {
   const [activityRevision, setActivityRevision] = useState(0);
   const [pendingUndo, setPendingUndo] = useState<UndoState | null>(null);
   const [completionNotice, setCompletionNotice] = useState<CompletionNoticeState | null>(null);
+
+  if (!completionAlertSchedulerRef.current) {
+    completionAlertSchedulerRef.current = new ForegroundGoalAlertScheduler({
+      durationMs: COMPLETION_NOTICE_DURATION_MS,
+      isForeground: () => AppState.currentState === 'active',
+      onStart: (alert: ForegroundGoalAlert) => {
+        startGoalAlert(alert.activityId);
+        setCompletionNotice(alert);
+      },
+      onStop: activityId => {
+        stopGoalAlert(activityId);
+        setCompletionNotice(currentNotice => currentNotice?.activityId === activityId ? null : currentNotice);
+      },
+    });
+  }
 
   // Records notification availability without letting notification support block local activity tracking.
   const recordNotificationAvailability = useCallback((availability: NotificationAvailability) => {
@@ -110,41 +130,13 @@ export function AppDataProvider({ children }: PropsWithChildren) {
 
   // Clears the pending foreground completion notice for the supplied focus activity.
   const dismissCompletionNotice = useCallback((activityId?: string) => {
-    if (activityId && completionNoticeActivityIdRef.current !== activityId) {
-      return;
-    }
-
-    if (completionNoticeTimerRef.current) {
-      clearTimeout(completionNoticeTimerRef.current);
-      completionNoticeTimerRef.current = null;
-    }
-    completionNoticeActivityIdRef.current = null;
-    setCompletionNotice(currentNotice => !activityId || currentNotice?.activityId === activityId ? null : currentNotice);
+    completionAlertSchedulerRef.current?.cancel(activityId);
   }, []);
 
-  // Starts the configurable, dismissible foreground completion timer without replacing the native background alert.
+  // Schedules one configurable foreground alarm without replacing the native background notification.
   const scheduleCompletionNotice = useCallback((activity: ActivityWithLogs) => {
-    dismissCompletionNotice();
-    const elapsedMilliseconds = calculateActiveElapsedMs({ events: activity.events, status: activity.status });
-    const remainingMilliseconds = activity.targetDurationMinutes * 60_000 - elapsedMilliseconds;
-    const triggerNotice = () => {
-      completionNoticeTimerRef.current = null;
-      completionNoticeActivityIdRef.current = activity.id;
-      setCompletionNotice({
-        activityId: activity.id,
-        title: activity.title,
-        expiresAt: Date.now() + COMPLETION_NOTICE_DURATION_MS,
-      });
-    };
-
-    completionNoticeActivityIdRef.current = activity.id;
-    if (remainingMilliseconds <= 0) {
-      triggerNotice();
-      return;
-    }
-
-    completionNoticeTimerRef.current = setTimeout(triggerNotice, remainingMilliseconds);
-  }, [dismissCompletionNotice]);
+    completionAlertSchedulerRef.current?.schedule(activity);
+  }, []);
 
   // Mirrors one activity into the native Live Activity without allowing native presentation failures to block SQLite writes.
   const syncLiveActivityForActivity = useCallback(async (activity: ActivityWithLogs | null) => {
@@ -252,7 +244,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       if (undoTimerRef.current) {
         clearTimeout(undoTimerRef.current);
       }
-      dismissCompletionNotice();
+      completionAlertSchedulerRef.current?.dispose();
     };
   }, [cleanupAutoCompletedActivities, dismissCompletionNotice, initializationAttempt, recordNotificationAvailability, scheduleCompletionNotice, syncLiveActivityForActivity]);
 
