@@ -117,7 +117,7 @@ export function TimerRing({
   const elapsedLabel = formatDuration(elapsedMs);
   const progress = getProgress(elapsedMs, targetDurationMinutes);
   const isAtEnd = progress >= 1;
-  const sandColor = frozen ? colors.complete : accentColor;
+  const sandColor = accentColor;
   const frameColor = colors.muted;
   const sandFlow = useRef(new Animated.Value(0)).current;
 

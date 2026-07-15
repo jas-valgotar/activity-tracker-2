@@ -6,6 +6,8 @@ const { readFileSync } = require('node:fs') as { readFileSync(path: string, enco
 
 const intentsSource = readFileSync('ios/ActivityTracker/ActivityLiveActivityIntents.swift', 'utf8');
 const liveActivityViewSource = readFileSync('ios/ActivityTrackerLiveActivity/ActivityTrackerLiveActivity.swift', 'utf8');
+const liveActivityManagerSource = readFileSync('ios/ActivityTracker/ActivityLiveActivityManager.swift', 'utf8');
+const liveActivityAttributesSource = readFileSync('ios/ActivityTracker/ActivityLiveActivityAttributes.swift', 'utf8');
 
 function intentDeclaration(name: string): string {
   const declaration = new RegExp(`struct ${name}: LiveActivityIntent \\{([\\s\\S]*?)(?=\\n@available|$)`);
@@ -50,5 +52,13 @@ describe('Live Activity control intents', () => {
     expect(intentsSource).toContain('ActivityIntentNotifications.complete(activityId: activityId)');
     expect(intentsSource).toContain('removePendingNotificationRequests');
     expect(intentsSource).toContain('UNTimeIntervalNotificationTrigger');
+  });
+
+  it('uses the persisted goal color key with a safe upgrade fallback', () => {
+    expect(liveActivityManagerSource).toContain('let colorKey = payload["colorKey"] as? NSNumber');
+    expect(liveActivityManagerSource).toContain('(0...7).contains(colorKey.intValue)');
+    expect(liveActivityManagerSource).toContain('existing.attributes.colorKey == colorKey.intValue');
+    expect(liveActivityAttributesSource).toContain('let colorKey: Int?');
+    expect(liveActivityViewSource).toContain('LiveActivityPalette.forKey(context.attributes.colorKey)');
   });
 });

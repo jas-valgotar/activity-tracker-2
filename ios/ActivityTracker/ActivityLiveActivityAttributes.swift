@@ -25,6 +25,7 @@ struct ActivityLiveActivityAttributes: ActivityAttributes {
   }
 
   let activityId: String
+  let colorKey: Int?
   let title: String
   let targetDurationMinutes: Int
 }

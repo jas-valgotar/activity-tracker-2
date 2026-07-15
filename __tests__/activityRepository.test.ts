@@ -38,6 +38,26 @@ describe('activity repository', () => {
     expect(created.status).toBe('active');
     expect(created.targetDurationMinutes).toBe(60);
     expect(created.events.map(event => event.type)).toEqual(['started']);
+    expect(created.colorKey).toBe(0);
+  });
+
+  it('assigns balanced stable color keys and retains them through deletion and restoration', async () => {
+    const { activities } = await createRepositories();
+    const created = [];
+    for (let index = 0; index < 8; index += 1) {
+      created.push(await activities.logPastActivity(`Goal ${index}`, 1, 1_000));
+    }
+    expect(created.map(activity => activity.colorKey)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+
+    const ninth = await activities.logPastActivity('Goal 8', 1, 1_000);
+    expect(ninth.colorKey).toBe(0);
+
+    await activities.softDeleteActivity(ninth.id);
+    const replacement = await activities.logPastActivity('Replacement', 1, 1_000);
+    expect(replacement.colorKey).toBe(0);
+
+    await activities.restoreActivity(ninth.id);
+    expect((await activities.getActivityWithLogs(ninth.id))?.colorKey).toBe(0);
   });
 
   it('persists a custom activity target duration', async () => {

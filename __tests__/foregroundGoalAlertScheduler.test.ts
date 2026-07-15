@@ -12,6 +12,7 @@ const MINUTE_MS = 60_000;
 function activity(overrides: Partial<ActivityWithLogs> = {}): ActivityWithLogs {
   return {
     id: 'activity-1',
+    colorKey: 0,
     title: 'Deep work',
     status: 'active',
     startedAt: 0,

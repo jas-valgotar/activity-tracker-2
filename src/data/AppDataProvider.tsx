@@ -159,6 +159,7 @@ export function AppDataProvider({ children }: PropsWithChildren) {
       });
       await startOrUpdateLiveActivity({
         activityId: activity.id,
+        colorKey: activity.colorKey,
         title: activity.title,
         targetDurationMinutes: activity.targetDurationMinutes,
         status: activity.status,

@@ -162,10 +162,9 @@ export const ActivityList = forwardRef<ActivityListHandle, ActivityListProps>(fu
       data={activities}
       keyExtractor={activity => activity.id}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
-      renderItem={({ item, index }) => (
+      renderItem={({ item }) => (
         <ActivityRow
           activity={item}
-          colorIndex={index}
           now={now}
           onComplete={handleComplete}
           onDelete={handleDelete}

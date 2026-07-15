@@ -13,7 +13,6 @@ import { getActivityPalette } from './activityPalette';
 
 type ActivityRowProps = {
   activity: ActivityWithLogs;
-  colorIndex: number;
   now: number;
   onPress(activity: ActivityWithLogs): void;
   onPause(activity: ActivityWithLogs): void;
@@ -25,7 +24,6 @@ type ActivityRowProps = {
 // Renders an activity row with tap navigation and right-side swipe actions.
 export function ActivityRow({
   activity,
-  colorIndex,
   now,
   onPress,
   onPause,
@@ -33,7 +31,7 @@ export function ActivityRow({
   onComplete,
   onDelete,
 }: ActivityRowProps) {
-  const palette = getActivityPalette(colorIndex);
+  const palette = getActivityPalette(activity.colorKey);
   const elapsedMs = calculateActiveElapsedMs({
     events: activity.events,
     status: activity.status,
@@ -61,7 +59,7 @@ export function ActivityRow({
             accessibilityLabel={`${isPaused ? 'Resume' : 'Pause'} ${activity.title}`}
             accessibilityRole="button"
             onPress={() => (isPaused ? onResume(activity) : onPause(activity))}
-            style={[styles.actionButton, styles.neutralAction]}
+            style={[styles.actionButton, isPaused ? styles.resumeAction : styles.pauseAction]}
           >
             {isPaused ? <Play color={colors.text} size={18} /> : <Pause color={colors.text} size={18} />}
           </Pressable>
@@ -151,7 +149,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  neutralAction: {
+  pauseAction: {
+    backgroundColor: colors.warningSoft,
+  },
+  resumeAction: {
     backgroundColor: colors.primarySoft,
   },
   row: {

@@ -1,11 +1,13 @@
 // Overview: Bridges activity lifecycle state and queued Lock Screen commands to the iOS Live Activity implementation.
 
 import { NativeModules, Platform } from 'react-native';
+import type { ActivityColorKey } from '../domain/activityColor';
 
 export type LiveActivityStatus = 'active' | 'paused';
 
 export type LiveActivityPayload = {
   activityId: string;
+  colorKey: ActivityColorKey;
   title: string;
   targetDurationMinutes: number;
   status: LiveActivityStatus;

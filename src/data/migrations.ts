@@ -1,6 +1,7 @@
 // Overview: Creates and upgrades the SQLite schema while preserving routine data and valid timer durations.
 
 import type { DatabaseClient } from './database';
+import { ACTIVITY_COLOR_KEYS } from '../domain/activityColor';
 import { DEFAULT_SORT_MODE } from '../domain/sort';
 import { DEFAULT_TARGET_DURATION_MINUTES } from '../domain/time';
 
@@ -10,6 +11,7 @@ export async function runMigrations(db: DatabaseClient): Promise<void> {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS activities (
       id TEXT PRIMARY KEY NOT NULL,
+      color_key INTEGER NOT NULL DEFAULT 0,
       title TEXT NOT NULL,
       status TEXT NOT NULL,
       started_at INTEGER NOT NULL,
@@ -20,6 +22,7 @@ export async function runMigrations(db: DatabaseClient): Promise<void> {
     )
   `);
   await ensureActivityTargetDurationColumn(db);
+  await ensureActivityColorKeyColumn(db);
   await db.execute(`
     CREATE TABLE IF NOT EXISTS activity_events (
       id TEXT PRIMARY KEY NOT NULL,
@@ -94,6 +97,24 @@ async function ensureActivityTargetDurationColumn(db: DatabaseClient): Promise<v
     await db.execute(
       `ALTER TABLE activities ADD COLUMN target_duration_minutes INTEGER NOT NULL DEFAULT ${DEFAULT_TARGET_DURATION_MINUTES}`,
     );
+  }
+}
+
+// Adds durable color keys and distributes legacy goals in creation order before the UI reads them.
+async function ensureActivityColorKeyColumn(db: DatabaseClient): Promise<void> {
+  const result = await db.execute('PRAGMA table_info(activities)');
+  if (result.rows.some(row => row.name === 'color_key')) {
+    return;
+  }
+
+  await db.execute('ALTER TABLE activities ADD COLUMN color_key INTEGER NOT NULL DEFAULT 0');
+  const activities = await db.execute('SELECT id FROM activities ORDER BY started_at ASC, id ASC');
+  const commands = activities.rows.map((row, index) => [
+    'UPDATE activities SET color_key = ? WHERE id = ?',
+    [ACTIVITY_COLOR_KEYS[index % ACTIVITY_COLOR_KEYS.length], row.id],
+  ] as [string, Array<string | number | null>]);
+  if (commands.length > 0) {
+    await db.executeBatch(commands);
   }
 }
 

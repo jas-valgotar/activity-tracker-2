@@ -3,11 +3,13 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ProgressPeriod, ProgressReport } from '../domain/activityTypes';
+import type { ActivityPalette } from './activityPalette';
 import { formatDuration, formatTargetDuration, getTargetProgressPercent } from '../domain/time';
 import { colors, radii, spacing } from './theme';
 import { DebugComponentLabel } from './DebugComponentFrame';
 
 type ActivityProgressCardProps = {
+  palette: ActivityPalette;
   report: ProgressReport;
   period: ProgressPeriod;
   targetDurationMinutes: number;
@@ -21,20 +23,20 @@ const PERIODS: Array<{ value: ProgressPeriod; label: string }> = [
 ];
 
 // Renders progress for the currently opened activity rather than aggregating all activities.
-export function ActivityProgressCard({ report, period, targetDurationMinutes, onChangePeriod }: ActivityProgressCardProps) {
+export function ActivityProgressCard({ palette, report, period, targetDurationMinutes, onChangePeriod }: ActivityProgressCardProps) {
   const targetPercent = Math.round(getTargetProgressPercent(report.totalActiveMs, targetDurationMinutes));
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: palette.background, borderColor: palette.border }]}>
       <DebugComponentLabel componentId="ui.activity-progress-card" componentName="ActivityProgressCard" />
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>{formatDuration(report.totalActiveMs)} focused</Text>
         </View>
-        <Text style={styles.target}>{targetPercent}% of {formatTargetDuration(targetDurationMinutes)}</Text>
+        <Text style={[styles.target, { color: palette.accent }]}>{targetPercent}% of {formatTargetDuration(targetDurationMinutes)}</Text>
       </View>
-      <View style={styles.targetTrack}>
-        <View style={[styles.targetFill, { width: `${targetPercent}%` }]} />
+      <View style={[styles.targetTrack, { backgroundColor: palette.border }]}>
+        <View style={[styles.targetFill, { backgroundColor: palette.accent, width: `${targetPercent}%` }]} />
       </View>
       <View style={styles.periodControl}>
         {PERIODS.map(option => {
@@ -59,7 +61,7 @@ export function ActivityProgressCard({ report, period, targetDurationMinutes, on
           return (
             <View key={bucket.key} style={styles.barColumn}>
               <View style={styles.barTrack}>
-                <View style={[styles.bar, { height: `${heightPercent}%` }]} />
+                <View style={[styles.bar, { backgroundColor: palette.accent, height: `${heightPercent}%` }]} />
               </View>
               <Text style={styles.barLabel}>{bucket.label}</Text>
             </View>

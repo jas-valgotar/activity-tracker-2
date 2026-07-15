@@ -11,4 +11,8 @@ describe('TimerRing', () => {
     expect(timerRingSource).toContain('{blinkNextSpike && !frozen ? (');
     expect(timerRingSource).not.toContain('{blinkNextSpike && !frozen && !isAtEnd ? (');
   });
+
+  it('keeps a completed goal using its assigned accent color', () => {
+    expect(timerRingSource).toContain('const sandColor = accentColor;');
+  });
 });

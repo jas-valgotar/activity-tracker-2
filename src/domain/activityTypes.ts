@@ -1,5 +1,7 @@
 // Overview: Defines the reusable activity domain types shared by data, UI, and navigation.
 
+import type { ActivityColorKey } from './activityColor';
+
 export type ActivityStatus = 'active' | 'paused' | 'completed';
 
 export type ActivityEventType =
@@ -18,6 +20,7 @@ export type ProgressPeriod = 'week' | 'month' | 'quarter';
 
 export type Activity = {
   id: string;
+  colorKey: ActivityColorKey;
   title: string;
   status: ActivityStatus;
   startedAt: number;

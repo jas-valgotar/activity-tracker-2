@@ -142,6 +142,7 @@ describe('activity time calculations', () => {
     const now = new Date(2026, 6, 15, 12, 0, 0).getTime();
     const activity = {
       id: 'progress-1',
+      colorKey: 0 as const,
       title: 'Focused session',
       status: 'completed' as const,
       startedAt,

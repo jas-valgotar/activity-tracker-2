@@ -1,6 +1,11 @@
 // Overview: Provides reusable CRUD and lifecycle operations for activities and their event logs.
 
 import type { DatabaseClient } from './database';
+import {
+  chooseLeastUsedActivityColorKey,
+  toActivityColorKey,
+  type ActivityColorKey,
+} from '../domain/activityColor';
 import type {
   Activity,
   ActivityEvent,
@@ -20,6 +25,7 @@ import {
 
 type DbActivityRow = {
   id: string;
+  color_key: number;
   title: string;
   status: string;
   started_at: number;
@@ -77,13 +83,26 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
   // Loads a raw activity row without mutating last-accessed state.
   async function getActivityRow(id: string): Promise<DbActivityRow | null> {
     const result = await db.execute(
-      `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
+      `SELECT id, color_key, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
        FROM activities
        WHERE id = ?`,
       [id],
     );
 
     return (result.rows[0] as DbActivityRow | undefined) ?? null;
+  }
+
+  // Allocates a durable, evenly balanced color without exposing palette details to callers.
+  async function allocateActivityColorKey(): Promise<ActivityColorKey> {
+    const result = await db.execute(
+      'SELECT color_key, COUNT(*) AS count FROM activities WHERE deleted_at IS NULL GROUP BY color_key',
+    );
+    const counts = new Map<ActivityColorKey, number>();
+    result.rows.forEach(row => {
+      const key = toActivityColorKey(Number(row.color_key));
+      counts.set(key, Number(row.count));
+    });
+    return chooseLeastUsedActivityColorKey(counts);
   }
 
   // Loads all lifecycle events for an activity in chronological order.
@@ -114,11 +133,12 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
 
       const now = Date.now();
       const id = createId();
+      const colorKey = await allocateActivityColorKey();
 
       await db.executeBatch([
         [
-          'INSERT INTO activities (id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [id, trimmedTitle, 'active', now, targetDurationMinutes, null, now, null],
+          'INSERT INTO activities (id, color_key, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [id, colorKey, trimmedTitle, 'active', now, targetDurationMinutes, null, now, null],
         ],
         [
           'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
@@ -141,10 +161,11 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
 
       const id = createId();
       const startedAt = completedAt - durationMinutes * 60_000;
+      const colorKey = await allocateActivityColorKey();
       await db.executeBatch([
         [
-          'INSERT INTO activities (id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [id, trimmedTitle, 'completed', startedAt, durationMinutes, completedAt, completedAt, null],
+          'INSERT INTO activities (id, color_key, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [id, colorKey, trimmedTitle, 'completed', startedAt, durationMinutes, completedAt, completedAt, null],
         ],
         [
           'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
@@ -173,6 +194,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
       const pausedActivityId = (activeResult.rows[0] as { id?: string } | undefined)?.id ?? null;
       const now = Date.now();
       const id = createId();
+      const colorKey = await allocateActivityColorKey();
       const commands: Array<[string, Array<string | number | null>]> = [];
 
       if (pausedActivityId) {
@@ -187,8 +209,8 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
 
       commands.push(
         [
-          'INSERT INTO activities (id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [id, trimmedTitle, 'active', now, targetDurationMinutes, null, now, null],
+          'INSERT INTO activities (id, color_key, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [id, colorKey, trimmedTitle, 'active', now, targetDurationMinutes, null, now, null],
         ],
         [
           'INSERT INTO activity_events (id, activity_id, type, occurred_at) VALUES (?, ?, ?, ?)',
@@ -259,7 +281,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
       const statusWhere = getFilterWhereClause(filter);
       const orderBy = toOrderByClause(sortMode);
       const result = await db.execute(
-        `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
+        `SELECT id, color_key, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
          FROM activities
          WHERE deleted_at IS NULL ${statusWhere}
          ORDER BY CASE WHEN status = 'active' THEN 0 ELSE 1 END, ${orderBy}`,
@@ -272,7 +294,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
     async getActivityWithLogs(id) {
       await touchActivity(id);
       const result = await db.execute(
-        `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
+        `SELECT id, color_key, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
          FROM activities
          WHERE id = ? AND deleted_at IS NULL`,
         [id],
@@ -292,7 +314,7 @@ export function createActivityRepository(db: DatabaseClient): ActivityRepository
     // Builds a progress report from one non-deleted activity and its event history.
     async getActivityProgressReport(id, period, now = Date.now()) {
       const result = await db.execute(
-        `SELECT id, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
+        `SELECT id, color_key, title, status, started_at, target_duration_minutes, completed_at, last_accessed_at, deleted_at
          FROM activities
          WHERE id = ? AND deleted_at IS NULL`,
         [id],
@@ -490,6 +512,7 @@ function getFilterWhereClause(filter: ActivityFilter): string {
 function rowToActivity(row: DbActivityRow): Activity {
   return {
     id: row.id,
+    colorKey: toActivityColorKey(row.color_key),
     title: row.title,
     status: row.status as Activity['status'],
     startedAt: row.started_at,

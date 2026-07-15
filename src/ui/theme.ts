@@ -1,22 +1,22 @@
-// Overview: Centralizes the neutral grayscale color system, spacing, and typography values used across the app UI.
+// Overview: Centralizes the light neutral shell and semantic action colors used across the app UI.
 
 export const colors = {
-  // Tonal differences communicate hierarchy and state without relying on hue.
-  background: '#F4F4F5',
+  // Tone, icons, and labels preserve meaning when iOS grayscale mode removes hue.
+  background: '#FAFBFC',
   surface: '#FFFFFF',
   surfaceRaised: '#FFFFFF',
-  border: '#D4D4D8',
-  text: '#18181B',
-  muted: '#71717A',
-  primary: '#3F3F46',
-  primaryDeep: '#18181B',
-  primarySoft: '#E4E4E7',
-  warning: '#52525B',
-  warningSoft: '#EDEDEF',
-  danger: '#27272A',
-  dangerSoft: '#E4E4E7',
-  complete: '#3F3F46',
-  completeSoft: '#EDEDEF',
+  border: '#E2E8F0',
+  text: '#334155',
+  muted: '#7A8798',
+  primary: '#5F95BE',
+  primaryDeep: '#477EAA',
+  primarySoft: '#EEF6FB',
+  warning: '#B28B42',
+  warningSoft: '#FFF8E8',
+  danger: '#C7544D',
+  dangerSoft: '#FFF0EF',
+  complete: '#4F9C6D',
+  completeSoft: '#F0F9F3',
   shadow: '#000000',
 };
 

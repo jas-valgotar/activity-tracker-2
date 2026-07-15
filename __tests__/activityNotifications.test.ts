@@ -21,6 +21,7 @@ function activity(overrides: Partial<ActivityWithLogs>): ActivityWithLogs {
   const startedAt = 0;
   return {
     id: 'activity-1',
+    colorKey: 0,
     title: 'Meditation',
     status: 'active',
     startedAt,

@@ -1,4 +1,6 @@
-// Overview: Provides deterministic grayscale palettes that give activity list cards gentle tonal separation.
+// Overview: Maps persisted goal color keys to calm pastel palettes with grayscale-friendly borders and accents.
+
+import type { ActivityColorKey } from '../domain/activityColor';
 
 export type ActivityPalette = {
   background: string;
@@ -6,18 +8,18 @@ export type ActivityPalette = {
   accent: string;
 };
 
-const ACTIVITY_PALETTES: ActivityPalette[] = [
-  { background: '#FAFAFA', border: '#D4D4D8', accent: '#18181B' },
-  { background: '#F5F5F5', border: '#D4D4D8', accent: '#27272A' },
-  { background: '#F0F0F1', border: '#C9C9CE', accent: '#3F3F46' },
-  { background: '#EBEBED', border: '#C4C4C8', accent: '#52525B' },
-  { background: '#F7F7F8', border: '#D0D0D4', accent: '#27272A' },
-  { background: '#EFEFF0', border: '#C8C8CC', accent: '#3F3F46' },
-  { background: '#F3F3F4', border: '#CCCCD0', accent: '#18181B' },
-  { background: '#E9E9EB', border: '#C2C2C6', accent: '#52525B' },
-];
+const ACTIVITY_PALETTES: Record<ActivityColorKey, ActivityPalette> = {
+  0: { background: '#F3F9FD', border: '#C9E0F0', accent: '#5E9BC7' },
+  1: { background: '#F4FAF5', border: '#CCE4D2', accent: '#70A884' },
+  2: { background: '#FFFBEF', border: '#EDDCAD', accent: '#C39A45' },
+  3: { background: '#F8F5FC', border: '#DCD1ED', accent: '#9C87C3' },
+  4: { background: '#FDF5F7', border: '#EDCED8', accent: '#C77A92' },
+  5: { background: '#F1FAF8', border: '#C4E5E0', accent: '#64A9A0' },
+  6: { background: '#FDF6F2', border: '#EDD2C4', accent: '#C58669' },
+  7: { background: '#F4F6FC', border: '#CDD6EB', accent: '#7D96C6' },
+};
 
-// Assigns each visible row a distinct palette before cycling for longer lists.
-export function getActivityPalette(index: number): ActivityPalette {
-  return ACTIVITY_PALETTES[index % ACTIVITY_PALETTES.length];
+// Returns the palette assigned to one activity independently of list order.
+export function getActivityPalette(colorKey: ActivityColorKey): ActivityPalette {
+  return ACTIVITY_PALETTES[colorKey];
 }

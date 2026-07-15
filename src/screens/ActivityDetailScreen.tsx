@@ -16,6 +16,7 @@ import { DebugComponentLabel } from '../ui/DebugComponentFrame';
 import { PresetEditor } from '../ui/PresetEditor';
 import type { PresetDraft } from '../ui/PresetEditor';
 import { colors, radii, spacing } from '../ui/theme';
+import { getActivityPalette } from '../ui/activityPalette';
 
 type DetailRoute = RouteProp<RootStackParamList, 'ActivityDetail'>;
 type DetailNavigation = NativeStackNavigationProp<RootStackParamList, 'ActivityDetail'>;
@@ -209,6 +210,7 @@ export function ActivityDetailScreen() {
   });
   const isCompleted = activity.status === 'completed';
   const isPaused = activity.status === 'paused';
+  const palette = getActivityPalette(activity.colorKey);
 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -218,7 +220,7 @@ export function ActivityDetailScreen() {
           <Trash2 color={colors.danger} size={20} />
         </Pressable>
       </View>
-      <View style={styles.summary}>
+      <View style={[styles.summary, { backgroundColor: palette.background, borderColor: palette.border }]}>
         <View style={styles.summaryCopy}>
           <Text style={styles.title}>{activity.title}</Text>
           <View style={[styles.statusBadge, isCompleted ? styles.completedBadge : isPaused ? styles.pausedBadge : null]}>
@@ -233,7 +235,9 @@ export function ActivityDetailScreen() {
           <Text style={styles.target}>Target {formatTargetDuration(activity.targetDurationMinutes)}</Text>
         </View>
         <TimerRing
+          accentColor={palette.accent}
           elapsedMs={elapsedMs}
+          labelBackgroundColor={palette.background}
           targetDurationMinutes={activity.targetDurationMinutes}
           blinkNextSpike={activity.status === 'active'}
           frozen={isCompleted}
@@ -242,6 +246,7 @@ export function ActivityDetailScreen() {
       {progressReport ? (
         <ActivityProgressCard
           onChangePeriod={setProgressPeriod}
+          palette={palette}
           period={progressPeriod}
           report={progressReport}
           targetDurationMinutes={activity.targetDurationMinutes}
@@ -249,7 +254,7 @@ export function ActivityDetailScreen() {
       ) : null}
       {!isCompleted ? <View style={styles.actions}>
         {!isCompleted ? (
-          <Pressable accessibilityLabel={`${isPaused ? 'Resume' : 'Pause'} ${activity.title}`} accessibilityRole="button" onPress={handlePauseResume} style={[styles.actionButton, styles.secondaryButton]}>
+          <Pressable accessibilityLabel={`${isPaused ? 'Resume' : 'Pause'} ${activity.title}`} accessibilityRole="button" onPress={handlePauseResume} style={[styles.actionButton, isPaused ? styles.resumeButton : styles.pauseButton]}>
             {isPaused ? <Play color={colors.text} size={18} /> : <Pause color={colors.text} size={18} />}
             <Text style={styles.secondaryText}>{isPaused ? 'Resume' : 'Pause'}</Text>
           </Pressable>
@@ -399,7 +404,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
-  secondaryButton: {
+  pauseButton: {
+    backgroundColor: colors.warningSoft,
+  },
+  resumeButton: {
     backgroundColor: colors.primarySoft,
   },
   secondaryText: {

@@ -24,11 +24,37 @@ describe('database migrations', () => {
 
     await runMigrations(db);
 
-    const activity = await db.execute('SELECT target_duration_minutes FROM activities WHERE id = ?', ['legacy-1']);
+    const activity = await db.execute('SELECT target_duration_minutes, color_key FROM activities WHERE id = ?', ['legacy-1']);
     expect(activity.rows[0]?.target_duration_minutes).toBe(60);
+    expect(activity.rows[0]?.color_key).toBe(0);
 
     const presets = await db.execute('SELECT COUNT(*) AS count FROM activity_presets');
     expect(presets.rows[0]?.count).toBe(3);
+  });
+
+  it('backfills legacy goals in creation order and keeps color-key migration idempotent', async () => {
+    const db = await createSqliteTestClient();
+    await db.execute(`
+      CREATE TABLE activities (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        status TEXT NOT NULL,
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        last_accessed_at INTEGER NOT NULL,
+        deleted_at INTEGER
+      )
+    `);
+    await db.executeBatch(Array.from({ length: 9 }, (_, index) => [
+      'INSERT INTO activities (id, title, status, started_at, completed_at, last_accessed_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [`legacy-${index}`, `Legacy ${index}`, 'completed', index, index, index, null],
+    ]));
+
+    await runMigrations(db);
+    await runMigrations(db);
+
+    const activities = await db.execute('SELECT id, color_key FROM activities ORDER BY started_at ASC');
+    expect(activities.rows.map(row => row.color_key)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 0]);
   });
 
   it('normalizes legacy duplicate active activities before enforcing the unique guard', async () => {

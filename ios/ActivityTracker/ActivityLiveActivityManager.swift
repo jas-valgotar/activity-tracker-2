@@ -14,6 +14,8 @@ final class ActivityLiveActivityManager: NSObject {
   ) {
     guard
       let activityId = payload["activityId"] as? String,
+      let colorKey = payload["colorKey"] as? NSNumber,
+      (0...7).contains(colorKey.intValue),
       let title = payload["title"] as? String,
       let targetDurationMinutes = payload["targetDurationMinutes"] as? NSNumber,
       let statusValue = payload["status"] as? String,
@@ -48,11 +50,16 @@ final class ActivityLiveActivityManager: NSObject {
           await activity.end(nil, dismissalPolicy: .immediate)
         }
 
-        if let existing = activities.first(where: { $0.attributes.activityId == activityId }) {
+        if let existing = activities.first(where: { $0.attributes.activityId == activityId }),
+           existing.attributes.colorKey == colorKey.intValue {
           await existing.update(content)
         } else {
+          if let existing = activities.first(where: { $0.attributes.activityId == activityId }) {
+            await existing.end(nil, dismissalPolicy: .immediate)
+          }
           let attributes = ActivityLiveActivityAttributes(
             activityId: activityId,
+            colorKey: colorKey.intValue,
             title: title,
             targetDurationMinutes: targetDurationMinutes.intValue,
           )

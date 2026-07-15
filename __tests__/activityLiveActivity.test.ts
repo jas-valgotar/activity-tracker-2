@@ -33,6 +33,7 @@ describe('activity Live Activity bridge', () => {
   it('forwards a typed activity payload to the native manager', async () => {
     const payload = {
       activityId: 'activity-1',
+      colorKey: 3 as const,
       title: 'Write tests',
       targetDurationMinutes: 60,
       status: 'active' as const,
@@ -64,6 +65,7 @@ describe('activity Live Activity bridge', () => {
 
     await expect(unavailableService.startOrUpdateLiveActivity({
       activityId: 'activity-1',
+      colorKey: 3,
       title: 'Write tests',
       targetDurationMinutes: 60,
       status: 'active',

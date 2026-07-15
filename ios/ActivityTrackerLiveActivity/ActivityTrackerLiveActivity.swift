@@ -16,8 +16,8 @@ struct ActivityTrackerLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: ActivityLiveActivityAttributes.self) { context in
       ActivityLockScreenView(context: context)
-        .activityBackgroundTint(Color(red: 0.97, green: 0.95, blue: 0.91))
-        .activitySystemActionForegroundColor(Color(red: 0.07, green: 0.12, blue: 0.16))
+        .activityBackgroundTint(LiveActivityPalette.forKey(context.attributes.colorKey).background)
+        .activitySystemActionForegroundColor(Color(red: 0.20, green: 0.32, blue: 0.45))
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
@@ -48,6 +48,33 @@ struct ActivityTrackerLiveActivity: Widget {
   }
 }
 
+// Keeps SwiftUI's goal colors in sync with the persisted React Native color-key contract.
+private struct LiveActivityPalette {
+  let background: Color
+  let accent: Color
+
+  static func forKey(_ colorKey: Int?) -> LiveActivityPalette {
+    switch colorKey {
+    case 1:
+      return LiveActivityPalette(background: Color(red: 0.957, green: 0.980, blue: 0.961), accent: Color(red: 0.439, green: 0.659, blue: 0.518))
+    case 2:
+      return LiveActivityPalette(background: Color(red: 1.000, green: 0.984, blue: 0.937), accent: Color(red: 0.765, green: 0.604, blue: 0.271))
+    case 3:
+      return LiveActivityPalette(background: Color(red: 0.973, green: 0.961, blue: 0.988), accent: Color(red: 0.612, green: 0.529, blue: 0.765))
+    case 4:
+      return LiveActivityPalette(background: Color(red: 0.992, green: 0.961, blue: 0.969), accent: Color(red: 0.780, green: 0.478, blue: 0.573))
+    case 5:
+      return LiveActivityPalette(background: Color(red: 0.945, green: 0.980, blue: 0.973), accent: Color(red: 0.392, green: 0.663, blue: 0.627))
+    case 6:
+      return LiveActivityPalette(background: Color(red: 0.992, green: 0.965, blue: 0.949), accent: Color(red: 0.773, green: 0.525, blue: 0.412))
+    case 7:
+      return LiveActivityPalette(background: Color(red: 0.957, green: 0.965, blue: 0.988), accent: Color(red: 0.490, green: 0.588, blue: 0.776))
+    default:
+      return LiveActivityPalette(background: Color(red: 0.953, green: 0.976, blue: 0.992), accent: Color(red: 0.369, green: 0.608, blue: 0.780))
+    }
+  }
+}
+
 private struct ActivityLockScreenView: View {
   let context: ActivityViewContext<ActivityLiveActivityAttributes>
 
@@ -56,7 +83,7 @@ private struct ActivityLockScreenView: View {
       HStack(alignment: .top, spacing: 10) {
         Image(systemName: context.state.status == .active ? "timer" : "pause.circle.fill")
           .font(.title3.weight(.bold))
-          .foregroundStyle(Color(red: 0.07, green: 0.38, blue: 0.55))
+          .foregroundStyle(LiveActivityPalette.forKey(context.attributes.colorKey).accent)
         VStack(alignment: .leading, spacing: 3) {
           Text(context.attributes.title)
             .font(.headline.weight(.bold))
@@ -86,21 +113,21 @@ private struct ActivityProgressControls: View {
           label: "Pause",
           symbol: "pause.fill",
           intent: PauseActivityIntent(activityId: context.attributes.activityId),
-          tint: Color(red: 0.07, green: 0.38, blue: 0.55),
+          tint: Color(red: 0.698, green: 0.545, blue: 0.259),
         )
       } else {
         ActivityControlButton(
           label: "Resume",
           symbol: "play.fill",
           intent: ResumeActivityIntent(activityId: context.attributes.activityId),
-          tint: Color(red: 0.07, green: 0.38, blue: 0.55),
+          tint: Color(red: 0.373, green: 0.584, blue: 0.745),
         )
       }
       ActivityControlButton(
         label: "Stop",
         symbol: "stop.fill",
         intent: CompleteActivityIntent(activityId: context.attributes.activityId),
-        tint: .red,
+        tint: Color(red: 0.780, green: 0.329, blue: 0.302),
       )
     }
   }
@@ -136,10 +163,10 @@ private struct ActivityProgressView: View {
         Group {
           if context.state.status == .active, let progressRange {
             ProgressView(timerInterval: progressRange, countsDown: false)
-              .tint(Color(red: 0.07, green: 0.38, blue: 0.55))
+              .tint(LiveActivityPalette.forKey(context.attributes.colorKey).accent)
           } else {
             ProgressView(value: pausedProgress)
-              .tint(Color(red: 0.75, green: 0.48, blue: 0.08))
+              .tint(LiveActivityPalette.forKey(context.attributes.colorKey).accent)
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -212,7 +239,7 @@ private struct StatusPill: View {
   var body: some View {
     Text(status == .active ? "IN FOCUS" : "PAUSED")
       .font(.caption2.weight(.black))
-      .foregroundStyle(status == .active ? Color(red: 0.07, green: 0.38, blue: 0.55) : Color(red: 0.65, green: 0.40, blue: 0.05))
+      .foregroundStyle(status == .active ? Color(red: 0.373, green: 0.584, blue: 0.745) : Color(red: 0.698, green: 0.545, blue: 0.259))
   }
 }
 
