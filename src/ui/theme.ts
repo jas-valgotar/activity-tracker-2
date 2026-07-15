@@ -1,22 +1,22 @@
-// Overview: Centralizes iOS-inspired system colors, spacing, and typography values used across the app UI.
+// Overview: Centralizes the neutral grayscale color system, spacing, and typography values used across the app UI.
 
 export const colors = {
-  // Mirrors iOS systemGroupedBackground and systemBackground for familiar hierarchy.
-  background: '#F2F2F7',
+  // Tonal differences communicate hierarchy and state without relying on hue.
+  background: '#F4F4F5',
   surface: '#FFFFFF',
   surfaceRaised: '#FFFFFF',
-  border: '#D1D1D6',
-  text: '#1C1C1E',
-  muted: '#8E8E93',
-  primary: '#007AFF',
-  primaryDeep: '#0066CC',
-  primarySoft: '#E5F1FF',
-  warning: '#FF9500',
-  warningSoft: '#FFF3E0',
-  danger: '#FF3B30',
-  dangerSoft: '#FFEBEA',
-  complete: '#34C759',
-  completeSoft: '#EAF8EE',
+  border: '#D4D4D8',
+  text: '#18181B',
+  muted: '#71717A',
+  primary: '#3F3F46',
+  primaryDeep: '#18181B',
+  primarySoft: '#E4E4E7',
+  warning: '#52525B',
+  warningSoft: '#EDEDEF',
+  danger: '#27272A',
+  dangerSoft: '#E4E4E7',
+  complete: '#3F3F46',
+  completeSoft: '#EDEDEF',
   shadow: '#000000',
 };
 

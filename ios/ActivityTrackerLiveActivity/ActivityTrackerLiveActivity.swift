@@ -173,14 +173,30 @@ private struct ActivityProgressView: View {
 
 }
 
-// Updates the compact remaining-time label once per second while preserving the paused value.
+// Uses ActivityKit's system-managed countdown so active Live Activities tick while the app is backgrounded.
 private struct RemainingTimeLabel: View {
   let context: ActivityViewContext<ActivityLiveActivityAttributes>
 
   var body: some View {
-    TimelineView(.periodic(from: .now, by: 1)) { timeline in
-      Text(formatSignedDuration(remainingMilliseconds(at: timeline.date)))
+    if context.state.status == .active, let countdownRange {
+      Text(
+        timerInterval: countdownRange,
+        countsDown: true,
+        showsHours: context.attributes.targetDurationMinutes >= 60
+      )
+      .monospacedDigit()
+    } else {
+      Text(formatSignedDuration(remainingMilliseconds(at: Date())))
     }
+  }
+
+  private var countdownRange: ClosedRange<Date>? {
+    guard let progressStartAt = context.state.progressStartAt else {
+      return nil
+    }
+
+    let targetEndAt = progressStartAt.addingTimeInterval(Double(context.attributes.targetDurationMinutes) * 60)
+    return Date()...targetEndAt
   }
 
   private func remainingMilliseconds(at date: Date) -> Int64 {

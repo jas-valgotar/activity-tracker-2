@@ -27,8 +27,10 @@ describe('Live Activity control intents', () => {
     expect(liveActivityViewSource).not.toContain('.widgetURL(');
   });
 
-  it('renders a one-second remaining-time countdown that becomes negative after the goal', () => {
-    expect(liveActivityViewSource).toContain('TimelineView(.periodic(from: .now, by: 1))');
+  it('renders a system-managed one-second remaining-time countdown while active', () => {
+    expect(liveActivityViewSource).toContain('Text(\n        timerInterval: countdownRange,');
+    expect(liveActivityViewSource).toContain('countsDown: true');
+    expect(liveActivityViewSource).toContain('.monospacedDigit()');
     expect(liveActivityViewSource).toContain('RemainingTimeLabel(context: context)');
     expect(liveActivityViewSource).toContain('return targetMilliseconds - elapsedMilliseconds');
     expect(liveActivityViewSource).toContain('let sign = milliseconds < 0 ? "-" : ""');
